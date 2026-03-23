@@ -5,6 +5,11 @@ import Foundation
 import OSLog
 import ServiceManagement
 
+private enum PasteShortcutMode {
+    case regular
+    case plainText
+}
+
 @MainActor
 final class AppState: ObservableObject {
     static let shared = AppState()
@@ -147,26 +152,33 @@ final class AppState: ObservableObject {
             self.logger.debug("activating target app \(targetApplication.localizedName ?? "unknown", privacy: .public)")
             targetApplication.activate()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                self.logger.debug("sending paste shortcut to active app")
-                self.sendPasteShortcut()
+                let shortcutMode = self.preferredPasteShortcutMode(for: item)
+                self.logger.debug("sending paste shortcut to active app mode=\(String(describing: shortcutMode), privacy: .public)")
+                self.sendPasteShortcut(mode: shortcutMode)
                 SoundEffectPlayer.shared.play(.paste)
             }
         }
     }
 
-    private func sendPasteShortcut() {
+    private func sendPasteShortcut(mode: PasteShortcutMode) {
         guard let source = CGEventSource(stateID: .hidSystemState) else {
             logger.error("failed to create CGEventSource for paste shortcut")
             SoundEffectPlayer.shared.play(.error)
             return
         }
         let keyCode = CGKeyCode(kVK_ANSI_V)
+        let flags: CGEventFlags = switch mode {
+        case .regular:
+            .maskCommand
+        case .plainText:
+            [.maskCommand, .maskAlternate, .maskShift]
+        }
 
         let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
-        keyDown?.flags = .maskCommand
+        keyDown?.flags = flags
 
         let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
-        keyUp?.flags = .maskCommand
+        keyUp?.flags = flags
 
         keyDown?.post(tap: .cghidEventTap)
         keyUp?.post(tap: .cghidEventTap)
@@ -283,6 +295,12 @@ final class AppState: ObservableObject {
     private func preferredPasteDestination() -> PasteDestinationMode {
         let rawValue = UserDefaults.standard.string(forKey: AppPreferences.pasteDestination) ?? PasteDestinationMode.activeApp.rawValue
         return PasteDestinationMode(rawValue: rawValue) ?? .activeApp
+    }
+
+    private func preferredPasteShortcutMode(for item: ClipboardItem) -> PasteShortcutMode {
+        let alwaysPastePlainText = UserDefaults.standard.object(forKey: AppPreferences.alwaysPastePlainText) as? Bool ?? false
+        guard alwaysPastePlainText, item.kind == .text else { return .regular }
+        return .plainText
     }
 
     func evaluateBackgroundPolicy() {
