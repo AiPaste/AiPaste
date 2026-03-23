@@ -45,6 +45,13 @@ private struct PersistedClipboardState: Codable {
     var groups: [ClipboardGroup]
 }
 
+private struct CloudClipboardState: Codable {
+    var items: [ClipboardItem]
+    var groups: [ClipboardGroup]
+    var updatedAt: Date
+    var deviceID: String
+}
+
 struct ColorValue: Hashable {
     let red: Double
     let green: Double
@@ -58,6 +65,8 @@ final class ClipboardStore: ObservableObject {
     @Published var searchText = ""
     @Published var selectedSourceID = "all"
     @Published private(set) var lastCopiedItemID: UUID?
+    @Published private(set) var iCloudSyncEnabled = UserDefaults.standard.object(forKey: AppPreferences.iCloudSync) as? Bool ?? true
+    @Published private(set) var lastSyncDate: Date?
 
     private let pasteboard = NSPasteboard.general
     private var lastChangeCount: Int
@@ -66,6 +75,10 @@ final class ClipboardStore: ObservableObject {
     private let persistenceURL: URL
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
+    private let cloudStore = NSUbiquitousKeyValueStore.default
+    private let cloudStateKey = "icloud.clipboardState"
+    private let deviceID = Host.current().localizedName ?? UUID().uuidString
+    private var isApplyingCloudState = false
 
     init() {
         lastChangeCount = pasteboard.changeCount
@@ -80,6 +93,8 @@ final class ClipboardStore: ObservableObject {
         persistenceURL = directory.appendingPathComponent("clipboard-history.json")
 
         load()
+        applyRetentionPolicy()
+        configureCloudSync()
         startMonitoring()
     }
 
@@ -221,6 +236,22 @@ final class ClipboardStore: ObservableObject {
         persist()
     }
 
+    func setICloudSync(_ enabled: Bool) {
+        iCloudSyncEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: AppPreferences.iCloudSync)
+
+        if enabled {
+            configureCloudSync()
+            pushCloudState()
+        }
+    }
+
+    func setHistoryRetention(_ retention: HistoryRetention) {
+        UserDefaults.standard.set(retention.rawValue, forKey: AppPreferences.historyRetention)
+        applyRetentionPolicy()
+        persist()
+    }
+
     private func promote(_ item: ClipboardItem) {
         guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
         var updated = items.remove(at: index)
@@ -335,9 +366,123 @@ final class ClipboardStore: ObservableObject {
     }
 
     private func persist() {
+        applyRetentionPolicy()
         let state = PersistedClipboardState(items: items, groups: groups)
         guard let data = try? encoder.encode(state) else { return }
         try? data.write(to: persistenceURL, options: .atomic)
+        pushCloudState()
+    }
+
+    private func configureCloudSync() {
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: cloudStore
+        )
+
+        guard iCloudSyncEnabled else { return }
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleCloudStoreDidChange(_:)),
+            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: cloudStore
+        )
+        cloudStore.synchronize()
+        pullCloudState()
+    }
+
+    @objc private func handleCloudStoreDidChange(_ notification: Notification) {
+        guard iCloudSyncEnabled else { return }
+        pullCloudState()
+    }
+
+    private func pushCloudState() {
+        guard iCloudSyncEnabled, !isApplyingCloudState else { return }
+
+        let state = CloudClipboardState(
+            items: cloudSyncItems(),
+            groups: groups,
+            updatedAt: .now,
+            deviceID: deviceID
+        )
+
+        guard let data = try? encoder.encode(state),
+              let string = String(data: data, encoding: .utf8) else { return }
+
+        cloudStore.set(string, forKey: cloudStateKey)
+        cloudStore.synchronize()
+        lastSyncDate = state.updatedAt
+    }
+
+    private func pullCloudState() {
+        guard iCloudSyncEnabled,
+              let string = cloudStore.string(forKey: cloudStateKey),
+              let data = string.data(using: .utf8),
+              let state = try? decoder.decode(CloudClipboardState.self, from: data) else { return }
+
+        guard state.deviceID != deviceID || state.updatedAt > (lastSyncDate ?? .distantPast) else { return }
+
+        isApplyingCloudState = true
+        defer { isApplyingCloudState = false }
+
+        groups = state.groups
+        mergeCloudItems(state.items)
+        lastSyncDate = state.updatedAt
+        applyRetentionPolicy()
+
+        let persistedState = PersistedClipboardState(items: items, groups: groups)
+        if let localData = try? encoder.encode(persistedState) {
+            try? localData.write(to: persistenceURL, options: .atomic)
+        }
+    }
+
+    private func mergeCloudItems(_ cloudItems: [ClipboardItem]) {
+        var merged = items
+
+        for cloudItem in cloudItems {
+            if let index = merged.firstIndex(where: { $0.id == cloudItem.id }) {
+                if merged[index].capturedAt < cloudItem.capturedAt {
+                    merged[index] = cloudItem
+                }
+            } else if cloudItem.kind == .text {
+                merged.append(cloudItem)
+            }
+        }
+
+        items = merged.sorted { lhs, rhs in
+            if lhs.isPinned != rhs.isPinned {
+                return lhs.isPinned && !rhs.isPinned
+            }
+            return lhs.capturedAt > rhs.capturedAt
+        }
+        trimIfNeeded()
+    }
+
+    private func cloudSyncItems() -> [ClipboardItem] {
+        items
+            .filter { $0.kind == .text }
+            .prefix(40)
+            .map { item in
+                var syncedItem = item
+                if let text = syncedItem.textContent, text.count > 4000 {
+                    syncedItem.textContent = String(text.prefix(4000))
+                }
+                syncedItem.imagePNGData = nil
+                syncedItem.imageSize = nil
+                return syncedItem
+            }
+    }
+
+    private func applyRetentionPolicy() {
+        guard let maxAge = currentHistoryRetention.maxAge else { return }
+        let cutoff = Date().addingTimeInterval(-maxAge)
+        items.removeAll { !$0.isPinned && $0.capturedAt < cutoff }
+    }
+
+    private var currentHistoryRetention: HistoryRetention {
+        let rawValue = UserDefaults.standard.object(forKey: AppPreferences.historyRetention) as? Int ?? HistoryRetention.month.rawValue
+        return HistoryRetention(rawValue: rawValue) ?? .month
     }
 }
 

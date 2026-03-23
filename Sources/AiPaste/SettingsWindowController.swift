@@ -1,56 +1,6 @@
 import AppKit
 import SwiftUI
 
-enum PasteDestinationMode: String {
-    case activeApp
-    case clipboard
-}
-
-enum SettingsPane: String, CaseIterable, Identifiable {
-    case general
-    case privacy
-    case shortcuts
-    case subscription
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .general:
-            return "General"
-        case .privacy:
-            return "Privacy"
-        case .shortcuts:
-            return "Shortcuts"
-        case .subscription:
-            return "Subscription"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .general:
-            return "gearshape"
-        case .privacy:
-            return "hand.raised"
-        case .shortcuts:
-            return "keyboard"
-        case .subscription:
-            return "checkmark.seal"
-        }
-    }
-}
-
-enum AppPreferences {
-    static let openAtLogin = "settings.openAtLogin"
-    static let runInBackground = "settings.runInBackground"
-    static let iCloudSync = "settings.iCloudSync"
-    static let soundEffects = "settings.soundEffects"
-    static let pasteDestination = "settings.pasteDestination"
-    static let alwaysPastePlainText = "settings.alwaysPastePlainText"
-    static let historyRetention = "settings.historyRetention"
-}
-
 @MainActor
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     static let shared = SettingsWindowController()
@@ -101,12 +51,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
 private struct SettingsRootView: View {
     @EnvironmentObject private var appState: AppState
+    @ObservedObject private var store = AppState.shared.store
     @State private var selectedPane: SettingsPane = .general
-    @AppStorage(AppPreferences.iCloudSync) private var iCloudSync = true
     @AppStorage(AppPreferences.soundEffects) private var soundEffects = true
     @AppStorage(AppPreferences.pasteDestination) private var pasteDestinationRaw = PasteDestinationMode.activeApp.rawValue
     @AppStorage(AppPreferences.alwaysPastePlainText) private var alwaysPastePlainText = false
-    @AppStorage(AppPreferences.historyRetention) private var historyRetention = 2.0
 
     var body: some View {
         HStack(spacing: 0) {
@@ -204,7 +153,14 @@ private struct SettingsRootView: View {
                                 set: { appState.setRunInBackground($0) }
                             )
                         )
-                        SettingsToggleRow(title: "iCloud sync", trailingText: "Synced now", isOn: $iCloudSync)
+                        SettingsToggleRow(
+                            title: "iCloud sync",
+                            trailingText: iCloudStatusText,
+                            isOn: Binding(
+                                get: { store.iCloudSyncEnabled },
+                                set: { store.setICloudSync($0) }
+                            )
+                        )
                         SettingsToggleRow(title: "Sound effects", isOn: $soundEffects, showsDivider: false)
                     }
                 }
@@ -255,14 +211,25 @@ private struct SettingsRootView: View {
 
                     SettingsCard {
                         VStack(alignment: .leading, spacing: 10) {
-                            Slider(value: $historyRetention, in: 0...4, step: 1)
+                            Slider(
+                                value: Binding(
+                                    get: { Double(currentHistoryRetention.rawValue) },
+                                    set: { newValue in
+                                        if let retention = HistoryRetention(rawValue: Int(newValue.rounded())) {
+                                            store.setHistoryRetention(retention)
+                                        }
+                                    }
+                                ),
+                                in: 0...4,
+                                step: 1
+                            )
                                 .tint(Color(red: 0.15, green: 0.48, blue: 0.94))
 
                             HStack {
                                 ForEach(Array(retentionLabels.enumerated()), id: \.offset) { index, label in
                                     Text(label)
                                         .font(.system(size: 9, weight: .semibold))
-                                        .foregroundStyle(Color.white.opacity(index == Int(historyRetention) ? 0.92 : 0.78))
+                                        .foregroundStyle(Color.white.opacity(index == currentHistoryRetention.rawValue ? 0.92 : 0.78))
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
                             }
@@ -308,12 +275,26 @@ private struct SettingsRootView: View {
     }
 
     private var retentionLabels: [String] {
-        ["Day", "Week", "Month", "Year", "Forever"]
+        HistoryRetention.allCases.map(\.title)
     }
 
     private var pasteDestination: PasteDestinationMode {
         get { PasteDestinationMode(rawValue: pasteDestinationRaw) ?? .activeApp }
         nonmutating set { pasteDestinationRaw = newValue.rawValue }
+    }
+
+    private var currentHistoryRetention: HistoryRetention {
+        let rawValue = UserDefaults.standard.object(forKey: AppPreferences.historyRetention) as? Int ?? HistoryRetention.month.rawValue
+        return HistoryRetention(rawValue: rawValue) ?? .month
+    }
+
+    private var iCloudStatusText: String? {
+        guard store.iCloudSyncEnabled else { return "Off" }
+        guard let lastSyncDate = store.lastSyncDate else { return "Waiting" }
+
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: lastSyncDate, relativeTo: .now)
     }
 }
 
