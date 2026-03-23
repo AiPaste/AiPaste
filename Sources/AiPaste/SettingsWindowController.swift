@@ -94,7 +94,6 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 private struct SettingsRootView: View {
     @EnvironmentObject private var appState: AppState
     @State private var selectedPane: SettingsPane = .general
-    @AppStorage(AppPreferences.openAtLogin) private var openAtLogin = false
     @AppStorage(AppPreferences.runInBackground) private var runInBackground = true
     @AppStorage(AppPreferences.iCloudSync) private var iCloudSync = true
     @AppStorage(AppPreferences.soundEffects) private var soundEffects = true
@@ -184,7 +183,13 @@ private struct SettingsRootView: View {
 
                 SettingsCard {
                     VStack(spacing: 0) {
-                        SettingsToggleRow(title: "Open at login", isOn: $openAtLogin)
+                        SettingsToggleRow(
+                            title: "Open at login",
+                            isOn: Binding(
+                                get: { appState.openAtLoginEnabled },
+                                set: { appState.setOpenAtLogin($0) }
+                            )
+                        )
                         SettingsToggleRow(title: "Run in background", isOn: $runInBackground)
                         SettingsToggleRow(title: "iCloud sync", trailingText: "Synced now", isOn: $iCloudSync)
                         SettingsToggleRow(title: "Sound effects", isOn: $soundEffects, showsDivider: false)

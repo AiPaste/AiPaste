@@ -3,6 +3,7 @@ import ApplicationServices
 import Carbon
 import Foundation
 import OSLog
+import ServiceManagement
 
 @MainActor
 final class AppState: ObservableObject {
@@ -11,6 +12,7 @@ final class AppState: ObservableObject {
     let store = ClipboardStore()
     @Published private(set) var isPanelVisible = false
     @Published private(set) var pasteAutomationAvailable = AXIsProcessTrusted()
+    @Published var openAtLoginEnabled = false
     @Published var selectedItemID: UUID?
 
     private let logger = Logger(subsystem: "AiPaste", category: "AppState")
@@ -41,6 +43,7 @@ final class AppState: ObservableObject {
 
     func start() {
         pasteAutomationAvailable = ensureAccessibilityPermission(prompt: false)
+        refreshOpenAtLoginStatus()
         hotKeyManager.register()
     }
 
@@ -81,6 +84,23 @@ final class AppState: ObservableObject {
 
     func captureClipboard() {
         store.captureCurrentClipboard()
+    }
+
+    func setOpenAtLogin(_ enabled: Bool) {
+        logger.debug("setOpenAtLogin requested enabled=\(enabled, privacy: .public)")
+
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            refreshOpenAtLoginStatus()
+        } catch {
+            logger.error("setOpenAtLogin failed: \(error.localizedDescription, privacy: .public)")
+            refreshOpenAtLoginStatus()
+            presentOpenAtLoginAlert(error: error)
+        }
     }
 
     func paste(_ item: ClipboardItem) {
@@ -243,5 +263,20 @@ final class AppState: ObservableObject {
     private func preferredPasteDestination() -> PasteDestinationMode {
         let rawValue = UserDefaults.standard.string(forKey: AppPreferences.pasteDestination) ?? PasteDestinationMode.activeApp.rawValue
         return PasteDestinationMode(rawValue: rawValue) ?? .activeApp
+    }
+
+    private func refreshOpenAtLoginStatus() {
+        let status = SMAppService.mainApp.status
+        openAtLoginEnabled = status == .enabled || status == .requiresApproval
+        logger.debug("refreshOpenAtLoginStatus status=\(String(describing: status), privacy: .public) enabled=\(self.openAtLoginEnabled, privacy: .public)")
+    }
+
+    private func presentOpenAtLoginAlert(error: Error) {
+        let alert = NSAlert()
+        alert.messageText = "Open at Login Unavailable"
+        alert.informativeText = "AiPaste could not update the login item. Make sure the app is installed as a normal macOS app bundle, then try again.\n\n\(error.localizedDescription)"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 }

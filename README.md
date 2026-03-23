@@ -18,6 +18,8 @@ swift run
 
 To enable automatic paste-back into the previously active app, grant AiPaste Accessibility permission in macOS System Settings.
 
+`Open at login` uses macOS ServiceManagement and works best when AiPaste is installed as a normal app bundle instead of only running through `swift run`.
+
 ## Build
 
 ```bash
