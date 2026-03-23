@@ -76,6 +76,11 @@ struct ContentView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .topLeading) {
+            DefaultConfirmButton {
+                appState.pasteSelectedItem()
+            }
+        }
         .onAppear {
             appState.syncSelectionToVisibleItems(preferFirst: true)
         }
@@ -220,6 +225,9 @@ struct ContentView: View {
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Color.white.opacity(0.92))
                 .focused($isSearchFocused)
+                .onSubmit {
+                    appState.pasteSelectedItem()
+                }
 
             if !store.searchText.isEmpty {
                 Button {
@@ -591,20 +599,24 @@ private struct ClipboardCard: View {
     }
 
     private var borderColor: Color {
-        if appState.selectedItemID == item.id {
+        if isActiveItem {
             return Color(red: 0.18, green: 0.60, blue: 1.0)
-        }
-        if store.lastCopiedItemID == item.id {
-            return Color(red: 0.10, green: 0.49, blue: 1.0)
         }
         return Color.white.opacity(0.05)
     }
 
     private var borderWidth: CGFloat {
-        if appState.selectedItemID == item.id {
-            return 3
+        isActiveItem ? 3 : 1
+    }
+
+    private var isActiveItem: Bool {
+        if let selectedItemID = appState.selectedItemID {
+            return selectedItemID == item.id
         }
-        return store.lastCopiedItemID == item.id ? 4 : 1
+        if !appState.isPanelVisible, let lastCopiedItemID = store.lastCopiedItemID {
+            return lastCopiedItemID == item.id
+        }
+        return false
     }
 }
 
@@ -983,5 +995,19 @@ private struct CheckerboardBackground: View {
                 }
             }
         }
+    }
+}
+
+private struct DefaultConfirmButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            EmptyView()
+        }
+        .keyboardShortcut(.defaultAction)
+        .frame(width: 0, height: 0)
+        .opacity(0.001)
+        .allowsHitTesting(false)
     }
 }

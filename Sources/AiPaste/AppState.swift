@@ -2,6 +2,7 @@ import AppKit
 import ApplicationServices
 import Carbon
 import Foundation
+import OSLog
 
 @MainActor
 final class AppState: ObservableObject {
@@ -12,6 +13,7 @@ final class AppState: ObservableObject {
     @Published private(set) var pasteAutomationAvailable = AXIsProcessTrusted()
     @Published var selectedItemID: UUID?
 
+    private let logger = Logger(subsystem: "AiPaste", category: "AppState")
     private var lastTargetApplication: NSRunningApplication?
 
     private lazy var panelController = ClipboardPanelController(
@@ -21,6 +23,9 @@ final class AppState: ObservableObject {
         },
         onNavigationCommand: { [weak self] command in
             self?.handlePanelNavigation(command)
+        },
+        onConfirmSelection: { [weak self] in
+            self?.pasteSelectedItem()
         }
     )
     private lazy var hotKeyManager = GlobalHotKeyManager {
@@ -47,6 +52,9 @@ final class AppState: ObservableObject {
         if let frontmostApplication = NSWorkspace.shared.frontmostApplication,
            frontmostApplication != NSRunningApplication.current {
             lastTargetApplication = frontmostApplication
+            logger.debug("showPanel captured frontmost app: \(frontmostApplication.localizedName ?? "unknown", privacy: .public) [\(frontmostApplication.bundleIdentifier ?? "nil", privacy: .public)]")
+        } else {
+            logger.debug("showPanel did not capture external frontmost app")
         }
         panelController.show()
         syncSelectionToVisibleItems(preferFirst: true)
@@ -62,23 +70,34 @@ final class AppState: ObservableObject {
 
     func paste(_ item: ClipboardItem) {
         selectedItemID = item.id
+        logger.debug("paste requested for item \(item.id.uuidString, privacy: .public) kind=\(item.kind.rawValue, privacy: .public)")
         store.copy(item)
         pasteAutomationAvailable = AXIsProcessTrusted()
         let targetApplication = lastTargetApplication
+        logger.debug("paste automation available: \(self.pasteAutomationAvailable, privacy: .public)")
+        logger.debug("paste target app: \(targetApplication?.localizedName ?? "nil", privacy: .public) [\(targetApplication?.bundleIdentifier ?? "nil", privacy: .public)]")
         hidePanel()
 
-        guard pasteAutomationAvailable, let targetApplication else { return }
+        guard pasteAutomationAvailable, let targetApplication else {
+            logger.error("paste aborted before activation. accessibility=\(self.pasteAutomationAvailable, privacy: .public) targetAppExists=\(targetApplication != nil, privacy: .public)")
+            return
+        }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            self.logger.debug("activating target app \(targetApplication.localizedName ?? "unknown", privacy: .public)")
             targetApplication.activate()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                self.logger.debug("sending paste shortcut to active app")
                 self.sendPasteShortcut()
             }
         }
     }
 
     private func sendPasteShortcut() {
-        guard let source = CGEventSource(stateID: .hidSystemState) else { return }
+        guard let source = CGEventSource(stateID: .hidSystemState) else {
+            logger.error("failed to create CGEventSource for paste shortcut")
+            return
+        }
         let keyCode = CGKeyCode(kVK_ANSI_V)
 
         let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
@@ -89,6 +108,19 @@ final class AppState: ObservableObject {
 
         keyDown?.post(tap: .cghidEventTap)
         keyUp?.post(tap: .cghidEventTap)
+        logger.debug("paste shortcut posted")
+    }
+
+    func pasteSelectedItem() {
+        let visibleItems = store.visibleItems
+        guard !visibleItems.isEmpty else {
+            logger.error("pasteSelectedItem aborted: no visible items")
+            return
+        }
+
+        let item = visibleItems.first(where: { $0.id == selectedItemID }) ?? visibleItems[0]
+        logger.debug("pasteSelectedItem resolved item \(item.id.uuidString, privacy: .public), selectedItemID=\(self.selectedItemID?.uuidString ?? "nil", privacy: .public), visibleCount=\(visibleItems.count, privacy: .public)")
+        paste(item)
     }
 
     func syncSelectionToVisibleItems(preferFirst: Bool = false) {
@@ -96,6 +128,7 @@ final class AppState: ObservableObject {
 
         guard !visibleItems.isEmpty else {
             selectedItemID = nil
+            logger.debug("syncSelectionToVisibleItems cleared selection because visible list is empty")
             return
         }
 
@@ -106,9 +139,11 @@ final class AppState: ObservableObject {
         }
 
         self.selectedItemID = visibleItems.first?.id
+        logger.debug("syncSelectionToVisibleItems set selection to \(self.selectedItemID?.uuidString ?? "nil", privacy: .public) preferFirst=\(preferFirst, privacy: .public)")
     }
 
     private func handlePanelNavigation(_ command: ClipboardPanelNavigationCommand) {
+        logger.debug("panel navigation command: \(String(describing: command), privacy: .public)")
         switch command {
         case .left:
             moveItemSelection(by: -1)
@@ -136,6 +171,7 @@ final class AppState: ObservableObject {
 
         let nextIndex = (currentIndex + delta + visibleItems.count) % visibleItems.count
         self.selectedItemID = visibleItems[nextIndex].id
+        logger.debug("moveItemSelection changed selection to \(self.selectedItemID?.uuidString ?? "nil", privacy: .public)")
     }
 
     private func moveGroupSelection(by delta: Int) {
@@ -145,6 +181,7 @@ final class AppState: ObservableObject {
         let currentIndex = groupIDs.firstIndex(of: store.selectedSourceID) ?? 0
         let nextIndex = (currentIndex + delta + groupIDs.count) % groupIDs.count
         store.selectedSourceID = groupIDs[nextIndex]
+        logger.debug("moveGroupSelection changed selectedSourceID to \(self.store.selectedSourceID, privacy: .public)")
         syncSelectionToVisibleItems(preferFirst: true)
     }
 }
