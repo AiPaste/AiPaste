@@ -13,6 +13,7 @@ final class AppState: ObservableObject {
     @Published private(set) var isPanelVisible = false
     @Published private(set) var pasteAutomationAvailable = AXIsProcessTrusted()
     @Published var openAtLoginEnabled = false
+    @Published var runInBackgroundEnabled = true
     @Published var selectedItemID: UUID?
 
     private let logger = Logger(subsystem: "AiPaste", category: "AppState")
@@ -22,6 +23,9 @@ final class AppState: ObservableObject {
         store: store,
         onVisibilityChange: { [weak self] isVisible in
             self?.isPanelVisible = isVisible
+            if !isVisible {
+                self?.evaluateBackgroundPolicy()
+            }
         },
         onNavigationCommand: { [weak self] command in
             self?.handlePanelNavigation(command)
@@ -44,6 +48,7 @@ final class AppState: ObservableObject {
     func start() {
         pasteAutomationAvailable = ensureAccessibilityPermission(prompt: false)
         refreshOpenAtLoginStatus()
+        runInBackgroundEnabled = UserDefaults.standard.object(forKey: AppPreferences.runInBackground) as? Bool ?? true
         hotKeyManager.register()
     }
 
@@ -84,6 +89,13 @@ final class AppState: ObservableObject {
 
     func captureClipboard() {
         store.captureCurrentClipboard()
+    }
+
+    func setRunInBackground(_ enabled: Bool) {
+        logger.debug("setRunInBackground requested enabled=\(enabled, privacy: .public)")
+        runInBackgroundEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: AppPreferences.runInBackground)
+        evaluateBackgroundPolicy()
     }
 
     func setOpenAtLogin(_ enabled: Bool) {
@@ -263,6 +275,19 @@ final class AppState: ObservableObject {
     private func preferredPasteDestination() -> PasteDestinationMode {
         let rawValue = UserDefaults.standard.string(forKey: AppPreferences.pasteDestination) ?? PasteDestinationMode.activeApp.rawValue
         return PasteDestinationMode(rawValue: rawValue) ?? .activeApp
+    }
+
+    func evaluateBackgroundPolicy() {
+        let shouldRunInBackground = runInBackgroundEnabled
+        let panelVisible = isPanelVisible
+        let settingsVisible = SettingsWindowController.shared.isVisible
+        logger.debug("evaluateBackgroundPolicy runInBackground=\(shouldRunInBackground, privacy: .public) panelVisible=\(panelVisible, privacy: .public) settingsVisible=\(settingsVisible, privacy: .public)")
+
+        guard !shouldRunInBackground, !panelVisible, !settingsVisible else { return }
+
+        DispatchQueue.main.async {
+            NSApplication.shared.terminate(nil)
+        }
     }
 
     private func refreshOpenAtLoginStatus() {

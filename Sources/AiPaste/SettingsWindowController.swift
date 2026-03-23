@@ -55,6 +55,10 @@ enum AppPreferences {
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     static let shared = SettingsWindowController()
 
+    var isVisible: Bool {
+        window?.isVisible ?? false
+    }
+
     private init() {
         let rootView = SettingsRootView()
             .environmentObject(AppState.shared)
@@ -89,12 +93,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.center()
         window.makeKeyAndOrderFront(nil)
     }
+
+    func windowWillClose(_ notification: Notification) {
+        AppState.shared.evaluateBackgroundPolicy()
+    }
 }
 
 private struct SettingsRootView: View {
     @EnvironmentObject private var appState: AppState
     @State private var selectedPane: SettingsPane = .general
-    @AppStorage(AppPreferences.runInBackground) private var runInBackground = true
     @AppStorage(AppPreferences.iCloudSync) private var iCloudSync = true
     @AppStorage(AppPreferences.soundEffects) private var soundEffects = true
     @AppStorage(AppPreferences.pasteDestination) private var pasteDestinationRaw = PasteDestinationMode.activeApp.rawValue
@@ -190,7 +197,13 @@ private struct SettingsRootView: View {
                                 set: { appState.setOpenAtLogin($0) }
                             )
                         )
-                        SettingsToggleRow(title: "Run in background", isOn: $runInBackground)
+                        SettingsToggleRow(
+                            title: "Run in background",
+                            isOn: Binding(
+                                get: { appState.runInBackgroundEnabled },
+                                set: { appState.setRunInBackground($0) }
+                            )
+                        )
                         SettingsToggleRow(title: "iCloud sync", trailingText: "Synced now", isOn: $iCloudSync)
                         SettingsToggleRow(title: "Sound effects", isOn: $soundEffects, showsDivider: false)
                     }

@@ -20,6 +20,8 @@ To enable automatic paste-back into the previously active app, grant AiPaste Acc
 
 `Open at login` uses macOS ServiceManagement and works best when AiPaste is installed as a normal app bundle instead of only running through `swift run`.
 
+`Run in background` controls whether AiPaste stays resident as a menu bar app after its panel and settings window are closed. When disabled, the app quits once no UI is visible.
+
 ## Build
 
 ```bash
