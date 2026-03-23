@@ -37,6 +37,7 @@ final class AppState: ObservableObject {
     private init() {}
 
     func start() {
+        pasteAutomationAvailable = ensureAccessibilityPermission(prompt: false)
         hotKeyManager.register()
     }
 
@@ -72,16 +73,20 @@ final class AppState: ObservableObject {
         selectedItemID = item.id
         logger.debug("paste requested for item \(item.id.uuidString, privacy: .public) kind=\(item.kind.rawValue, privacy: .public)")
         store.copy(item)
-        pasteAutomationAvailable = AXIsProcessTrusted()
         let targetApplication = lastTargetApplication
+        pasteAutomationAvailable = ensureAccessibilityPermission(prompt: true)
         logger.debug("paste automation available: \(self.pasteAutomationAvailable, privacy: .public)")
         logger.debug("paste target app: \(targetApplication?.localizedName ?? "nil", privacy: .public) [\(targetApplication?.bundleIdentifier ?? "nil", privacy: .public)]")
-        hidePanel()
 
         guard pasteAutomationAvailable, let targetApplication else {
             logger.error("paste aborted before activation. accessibility=\(self.pasteAutomationAvailable, privacy: .public) targetAppExists=\(targetApplication != nil, privacy: .public)")
+            if !pasteAutomationAvailable {
+                presentAccessibilityPermissionAlert()
+            }
             return
         }
+
+        hidePanel()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
             self.logger.debug("activating target app \(targetApplication.localizedName ?? "unknown", privacy: .public)")
@@ -183,5 +188,34 @@ final class AppState: ObservableObject {
         store.selectedSourceID = groupIDs[nextIndex]
         logger.debug("moveGroupSelection changed selectedSourceID to \(self.store.selectedSourceID, privacy: .public)")
         syncSelectionToVisibleItems(preferFirst: true)
+    }
+
+    private func ensureAccessibilityPermission(prompt: Bool) -> Bool {
+        let options = ["AXTrustedCheckOptionPrompt": prompt] as CFDictionary
+        let trusted = AXIsProcessTrustedWithOptions(options)
+        logger.debug("accessibility permission check trusted=\(trusted, privacy: .public) prompt=\(prompt, privacy: .public)")
+        return trusted
+    }
+
+    private func presentAccessibilityPermissionAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Accessibility Permission Required"
+        alert.informativeText = "AiPaste needs Accessibility access to switch back to your previous app and send Command-V automatically."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "OK")
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            openAccessibilitySettings()
+        }
+    }
+
+    private func openAccessibilitySettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else {
+            logger.error("failed to build accessibility settings URL")
+            return
+        }
+        let opened = NSWorkspace.shared.open(url)
+        logger.debug("open accessibility settings result=\(opened, privacy: .public)")
     }
 }

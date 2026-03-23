@@ -16,6 +16,8 @@ AiPaste is a native macOS clipboard app built with SwiftUI. It monitors the syst
 swift run
 ```
 
+To enable automatic paste-back into the previously active app, grant AiPaste Accessibility permission in macOS System Settings.
+
 ## Build
 
 ```bash
