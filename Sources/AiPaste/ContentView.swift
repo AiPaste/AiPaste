@@ -174,6 +174,22 @@ private struct ClipboardCard: View {
             Button(item.isPinned ? "Unpin" : "Pin") {
                 store.togglePin(item)
             }
+            Menu("Move To Group") {
+                Button("Clipboard") {
+                    store.move(item, toGroupID: nil)
+                }
+
+                if store.groups.isEmpty {
+                    Button("No Groups Yet") {}
+                        .disabled(true)
+                } else {
+                    ForEach(store.groups, id: \.id) { group in
+                        Button(group.title) {
+                            store.move(item, toGroupID: group.id)
+                        }
+                    }
+                }
+            }
             Divider()
             Button("Delete") {
                 store.remove(item)
@@ -321,7 +337,7 @@ private struct ToolbarChip<Content: View>: View {
                 content
             }
             .foregroundStyle(Color.white.opacity(isSelected ? 0.96 : 0.74))
-            .padding(.horizontal, isSelected ? 14 : 2)
+            .padding(.horizontal, 14)
             .frame(height: 34)
             .background(
                 Capsule(style: .continuous)
@@ -333,6 +349,7 @@ private struct ToolbarChip<Content: View>: View {
             )
         }
         .buttonStyle(.plain)
+        .zIndex(isSelected ? 1 : 0)
     }
 }
 

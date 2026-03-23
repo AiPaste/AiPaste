@@ -157,6 +157,16 @@ final class ClipboardStore: ObservableObject {
         persist()
     }
 
+    func move(_ item: ClipboardItem, toGroupID groupID: String?) {
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+        items[index].groupID = groupID
+        items[index].capturedAt = .now
+
+        let movedItem = items.remove(at: index)
+        items.insert(movedItem, at: 0)
+        persist()
+    }
+
     func remove(_ item: ClipboardItem) {
         items.removeAll { $0.id == item.id }
         persist()
