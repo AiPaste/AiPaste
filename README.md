@@ -22,6 +22,8 @@ To enable automatic paste-back into the previously active app, grant AiPaste Acc
 
 `Run in background` controls whether AiPaste stays resident as a menu bar app after its panel and settings window are closed. When disabled, the app quits once no UI is visible.
 
+`Sound effects` now plays real system sounds for clipboard capture, successful paste-to-app actions, and permission or system-operation failures.
+
 ## Build
 
 ```bash

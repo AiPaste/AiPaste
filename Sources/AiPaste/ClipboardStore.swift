@@ -276,6 +276,7 @@ final class ClipboardStore: ObservableObject {
                 appName: appName,
                 bundleIdentifier: bundleIdentifier
             )
+            SoundEffectPlayer.shared.play(.capture)
             persist()
             return
         }
@@ -289,6 +290,7 @@ final class ClipboardStore: ObservableObject {
             appName: appName,
             bundleIdentifier: bundleIdentifier
         )
+        SoundEffectPlayer.shared.play(.capture)
         persist()
     }
 

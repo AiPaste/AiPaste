@@ -110,6 +110,7 @@ final class AppState: ObservableObject {
             refreshOpenAtLoginStatus()
         } catch {
             logger.error("setOpenAtLogin failed: \(error.localizedDescription, privacy: .public)")
+            SoundEffectPlayer.shared.play(.error)
             refreshOpenAtLoginStatus()
             presentOpenAtLoginAlert(error: error)
         }
@@ -133,6 +134,7 @@ final class AppState: ObservableObject {
 
         guard pasteAutomationAvailable, let targetApplication else {
             logger.error("paste aborted before activation. accessibility=\(self.pasteAutomationAvailable, privacy: .public) targetAppExists=\(targetApplication != nil, privacy: .public)")
+            SoundEffectPlayer.shared.play(.error)
             if !pasteAutomationAvailable {
                 presentAccessibilityPermissionAlert()
             }
@@ -147,6 +149,7 @@ final class AppState: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                 self.logger.debug("sending paste shortcut to active app")
                 self.sendPasteShortcut()
+                SoundEffectPlayer.shared.play(.paste)
             }
         }
     }
@@ -154,6 +157,7 @@ final class AppState: ObservableObject {
     private func sendPasteShortcut() {
         guard let source = CGEventSource(stateID: .hidSystemState) else {
             logger.error("failed to create CGEventSource for paste shortcut")
+            SoundEffectPlayer.shared.play(.error)
             return
         }
         let keyCode = CGKeyCode(kVK_ANSI_V)
@@ -266,10 +270,14 @@ final class AppState: ObservableObject {
     private func openAccessibilitySettings() {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else {
             logger.error("failed to build accessibility settings URL")
+            SoundEffectPlayer.shared.play(.error)
             return
         }
         let opened = NSWorkspace.shared.open(url)
         logger.debug("open accessibility settings result=\(opened, privacy: .public)")
+        if !opened {
+            SoundEffectPlayer.shared.play(.error)
+        }
     }
 
     private func preferredPasteDestination() -> PasteDestinationMode {
