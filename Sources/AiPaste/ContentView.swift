@@ -3,6 +3,8 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var store: ClipboardStore
+    @State private var editingGroupID: String?
+    @State private var editingGroupTitle = ""
 
     var body: some View {
         ZStack {
@@ -72,12 +74,43 @@ struct ContentView: View {
                 }
 
                 ForEach(store.groups, id: \.id) { group in
-                    GroupTab(
+                    EditableGroupTab(
                         title: group.title,
                         color: color(for: group.colorToken),
-                        isSelected: store.selectedSourceID == group.id
+                        isSelected: store.selectedSourceID == group.id,
+                        isEditing: editingGroupID == group.id,
+                        draftTitle: $editingGroupTitle,
+                        onSubmit: {
+                            store.renameGroup(id: group.id, to: editingGroupTitle)
+                            editingGroupID = nil
+                        }
                     ) {
                         store.selectedSourceID = group.id
+                    }
+                    .contextMenu {
+                        Button("Rename", systemImage: "pencil") {
+                            editingGroupID = group.id
+                            editingGroupTitle = group.title
+                            store.selectedSourceID = group.id
+                        }
+
+                        Button("Share Pinboard", systemImage: "square.and.arrow.up") {
+                            sharePinboard(for: group)
+                        }
+
+                        Button("Delete...", systemImage: "trash") {
+                            deleteGroup(group)
+                        }
+
+                        Divider()
+
+                        Menu("Set Color") {
+                            ForEach(GroupColorToken.allCases, id: \.self) { token in
+                                Button(colorMenuTitle(for: token, isSelected: group.colorToken == token)) {
+                                    store.updateGroupColor(id: group.id, token: token)
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -135,6 +168,37 @@ struct ContentView: View {
         gradient(for: token).start
     }
 
+    private func colorName(for token: GroupColorToken) -> String {
+        switch token {
+        case .red:
+            return "Red"
+        case .orange:
+            return "Orange"
+        case .gray:
+            return "Gray"
+        case .green:
+            return "Green"
+        }
+    }
+
+    private func colorEmoji(for token: GroupColorToken) -> String {
+        switch token {
+        case .red:
+            return "🔴"
+        case .orange:
+            return "🟠"
+        case .gray:
+            return "⚪"
+        case .green:
+            return "🟢"
+        }
+    }
+
+    private func colorMenuTitle(for token: GroupColorToken, isSelected: Bool) -> String {
+        let prefix = isSelected ? "✓ " : ""
+        return "\(prefix)\(colorEmoji(for: token)) \(colorName(for: token))"
+    }
+
     private func gradient(for token: GroupColorToken) -> (start: Color, end: Color) {
         switch token {
         case .red:
@@ -157,6 +221,38 @@ struct ContentView: View {
                 Color(red: 0.18, green: 0.80, blue: 0.68),
                 Color(red: 0.12, green: 0.70, blue: 0.60)
             )
+        }
+    }
+
+    private func sharePinboard(for group: ClipboardGroup) {
+        let export = store.items
+            .filter { $0.groupID == group.id }
+            .map { item -> String in
+                switch item.kind {
+                case .text:
+                    return item.textPreview
+                case .image:
+                    return "[Image \(item.footerLabel)]"
+                }
+            }
+            .joined(separator: "\n\n")
+
+        let output = export.isEmpty ? group.title : "# \(group.title)\n\n\(export)"
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(output, forType: .string)
+    }
+
+    private func deleteGroup(_ group: ClipboardGroup) {
+        let alert = NSAlert()
+        alert.messageText = "Delete Group?"
+        alert.informativeText = "Items in this group will be moved back to Clipboard."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            store.deleteGroup(id: group.id)
         }
     }
 }
@@ -360,19 +456,61 @@ private struct SelectedClipboardChip: View {
     }
 }
 
-private struct GroupTab: View {
+private struct EditableGroupTab: View {
     let title: String
     let color: Color
     let isSelected: Bool
+    let isEditing: Bool
+    @Binding var draftTitle: String
+    let onSubmit: () -> Void
     let action: () -> Void
 
+    @FocusState private var isFocused: Bool
+
     var body: some View {
-        ToolbarChip(isSelected: isSelected, action: action) {
-            Circle()
-                .fill(color)
-                .frame(width: 10, height: 10)
-            Text(title)
-                .font(.system(size: 11, weight: .semibold))
+        if isEditing {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 10, height: 10)
+
+                TextField("", text: $draftTitle)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.96))
+                    .frame(minWidth: 52, maxWidth: 110)
+                    .focused($isFocused)
+                    .onSubmit(onSubmit)
+                    .onAppear {
+                        DispatchQueue.main.async {
+                            isFocused = true
+                        }
+                    }
+                    .onChange(of: isFocused) { _, focused in
+                        if !focused {
+                            onSubmit()
+                        }
+                    }
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 34)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(0.10))
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
+                    )
+            )
+            .zIndex(2)
+        } else {
+            ToolbarChip(isSelected: isSelected, action: action) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 10, height: 10)
+                Text(title)
+                    .font(.system(size: 11, weight: .semibold))
+            }
         }
     }
 }

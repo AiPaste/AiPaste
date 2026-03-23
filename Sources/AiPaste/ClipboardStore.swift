@@ -120,6 +120,31 @@ final class ClipboardStore: ObservableObject {
         persist()
     }
 
+    func renameGroup(id: String, to newTitle: String) {
+        let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard let index = groups.firstIndex(where: { $0.id == id }) else { return }
+        groups[index].title = trimmed
+        persist()
+    }
+
+    func updateGroupColor(id: String, token: GroupColorToken) {
+        guard let index = groups.firstIndex(where: { $0.id == id }) else { return }
+        groups[index].colorToken = token
+        persist()
+    }
+
+    func deleteGroup(id: String) {
+        groups.removeAll { $0.id == id }
+        for index in items.indices where items[index].groupID == id {
+            items[index].groupID = nil
+        }
+        if selectedSourceID == id {
+            selectedSourceID = "all"
+        }
+        persist()
+    }
+
     func startMonitoring() {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 0.75, repeats: true) { [weak self] _ in
