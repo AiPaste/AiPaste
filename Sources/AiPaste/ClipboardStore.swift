@@ -102,6 +102,11 @@ final class ClipboardStore: ObservableObject {
         return deduped.values.sorted { $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending }
     }
 
+    func group(for id: String?) -> ClipboardGroup? {
+        guard let id else { return nil }
+        return groups.first(where: { $0.id == id })
+    }
+
     func createGroup() {
         let index = groups.count + 1
         let token = GroupColorToken.allCases[groups.count % GroupColorToken.allCases.count]

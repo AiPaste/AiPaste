@@ -132,15 +132,31 @@ struct ContentView: View {
     }
 
     private func color(for token: GroupColorToken) -> Color {
+        gradient(for: token).start
+    }
+
+    private func gradient(for token: GroupColorToken) -> (start: Color, end: Color) {
         switch token {
         case .red:
-            return Color(red: 1.00, green: 0.27, blue: 0.31)
+            return (
+                Color(red: 0.95, green: 0.31, blue: 0.36),
+                Color(red: 0.86, green: 0.18, blue: 0.25)
+            )
         case .orange:
-            return Color(red: 1.00, green: 0.63, blue: 0.19)
+            return (
+                Color(red: 1.00, green: 0.67, blue: 0.25),
+                Color(red: 0.96, green: 0.50, blue: 0.15)
+            )
         case .gray:
-            return Color(red: 0.75, green: 0.75, blue: 0.79)
+            return (
+                Color(red: 0.63, green: 0.64, blue: 0.69),
+                Color(red: 0.52, green: 0.53, blue: 0.58)
+            )
         case .green:
-            return Color(red: 0.20, green: 0.83, blue: 0.36)
+            return (
+                Color(red: 0.18, green: 0.80, blue: 0.68),
+                Color(red: 0.12, green: 0.70, blue: 0.60)
+            )
         }
     }
 }
@@ -202,10 +218,10 @@ private struct ClipboardCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.cardTitle)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(item.sourceStyle.tint)
+                    .foregroundStyle(headerTint)
                 Text(item.relativeTimestamp)
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(item.sourceStyle.tint.opacity(0.82))
+                    .foregroundStyle(headerTint.opacity(0.82))
             }
 
             Spacer(minLength: 0)
@@ -218,11 +234,46 @@ private struct ClipboardCard: View {
         .frame(height: 54, alignment: .top)
         .background(
             LinearGradient(
-                colors: [item.sourceStyle.accent, item.sourceStyle.secondaryAccent],
+                colors: [headerColors.start, headerColors.end],
                 startPoint: .leading,
                 endPoint: .trailing
             )
         )
+    }
+
+    private var headerColors: (start: Color, end: Color) {
+        if let group = store.group(for: item.groupID) {
+            switch group.colorToken {
+            case .red:
+                return (
+                    Color(red: 0.95, green: 0.31, blue: 0.36),
+                    Color(red: 0.86, green: 0.18, blue: 0.25)
+                )
+            case .orange:
+                return (
+                    Color(red: 1.00, green: 0.67, blue: 0.25),
+                    Color(red: 0.96, green: 0.50, blue: 0.15)
+                )
+            case .gray:
+                return (
+                    Color(red: 0.63, green: 0.64, blue: 0.69),
+                    Color(red: 0.52, green: 0.53, blue: 0.58)
+                )
+            case .green:
+                return (
+                    Color(red: 0.18, green: 0.80, blue: 0.68),
+                    Color(red: 0.12, green: 0.70, blue: 0.60)
+                )
+            }
+        }
+        return (item.sourceStyle.accent, item.sourceStyle.secondaryAccent)
+    }
+
+    private var headerTint: Color {
+        if store.group(for: item.groupID) != nil {
+            return .white
+        }
+        return item.sourceStyle.tint
     }
 
     @ViewBuilder
