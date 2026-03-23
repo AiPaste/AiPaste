@@ -128,66 +128,51 @@ struct ContentView: View {
     }
 
     private var toolbar: some View {
-        ZStack {
-            HStack {
-                circleButton(systemName: "arrow.clockwise") {
-                    store.captureCurrentClipboard()
-                }
+        HStack(spacing: 18) {
+            searchControl
 
-                Spacer(minLength: 0)
-
-                circleButton(systemName: "ellipsis") {
-                    store.clearAll()
-                }
+            SelectedClipboardChip(
+                count: store.items.count,
+                isSelected: store.selectedSourceID == "all",
+                isCompact: isSearchFocused
+            ) {
+                store.selectedSourceID = "all"
             }
 
-            HStack(spacing: 18) {
-                searchControl
-
-                SelectedClipboardChip(
-                    count: store.items.count,
-                    isSelected: store.selectedSourceID == "all",
-                    isCompact: isSearchFocused
-                ) {
-                    store.selectedSourceID = "all"
-                }
-
-                HStack(spacing: 8) {
-                    ForEach(store.groups, id: \.id) { group in
-                        EditableGroupTab(
-                            id: group.id,
-                            title: group.title,
-                            color: color(for: group.colorToken),
-                            isSelected: store.selectedSourceID == group.id,
-                            isCompact: isSearchFocused,
-                            isEditing: editingGroupID == group.id,
-                            draftTitle: $editingGroupTitle,
-                            onSubmit: {
-                                store.renameGroup(id: group.id, to: editingGroupTitle)
-                                editingGroupID = nil
-                            },
-                            onSecondaryClick: {
-                                activeGroupMenuID = group.id
-                            }
-                        ) {
-                            activeGroupMenuID = nil
-                            store.selectedSourceID = group.id
+            HStack(spacing: 8) {
+                ForEach(store.groups, id: \.id) { group in
+                    EditableGroupTab(
+                        id: group.id,
+                        title: group.title,
+                        color: color(for: group.colorToken),
+                        isSelected: store.selectedSourceID == group.id,
+                        isCompact: isSearchFocused,
+                        isEditing: editingGroupID == group.id,
+                        draftTitle: $editingGroupTitle,
+                        onSubmit: {
+                            store.renameGroup(id: group.id, to: editingGroupTitle)
+                            editingGroupID = nil
+                        },
+                        onSecondaryClick: {
+                            activeGroupMenuID = group.id
                         }
+                    ) {
+                        activeGroupMenuID = nil
+                        store.selectedSourceID = group.id
                     }
                 }
-
-                Button {
-                    store.createGroup()
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 15, weight: .regular))
-                        .foregroundStyle(Color.white.opacity(0.88))
-                }
-                .buttonStyle(.plain)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
+
+            Button {
+                store.createGroup()
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(Color.white.opacity(0.88))
+            }
+            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     @ViewBuilder
@@ -286,23 +271,6 @@ struct ContentView: View {
                 }
             }
         }
-    }
-
-    private func circleButton(systemName: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-                Image(systemName: systemName)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.9))
-                .frame(width: 38, height: 38)
-                .background(
-                    Circle()
-                        .fill(Color.white.opacity(0.07))
-                        .overlay(
-                            Circle().strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
-                        )
-                )
-        }
-        .buttonStyle(.plain)
     }
 
     private func color(for token: GroupColorToken) -> Color {
