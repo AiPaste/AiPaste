@@ -195,7 +195,7 @@ final class ClipboardStore: ObservableObject {
         pasteboard.clearContents()
 
         switch item.kind {
-        case .text:
+        case .text, .link:
             if let textContent = item.textContent {
                 pasteboard.setString(textContent, forType: .string)
             }
@@ -295,16 +295,20 @@ final class ClipboardStore: ObservableObject {
     }
 
     private func upsertTextItem(_ text: String, groupID: String?, appName: String, bundleIdentifier: String?) {
-        if let existingIndex = items.firstIndex(where: { $0.matchesTextPayload(text, in: groupID) }) {
+        let kind = ClipboardItem.detectKind(for: text)
+
+        if let existingIndex = items.firstIndex(where: { $0.matchesStringPayload(text, in: groupID) }) {
             var existing = items.remove(at: existingIndex)
             existing.capturedAt = .now
             existing.appName = appName
             existing.bundleIdentifier = bundleIdentifier
+            existing.kind = kind
             items.insert(existing, at: 0)
         } else {
             items.insert(
                 ClipboardItem(
                     textContent: text,
+                    kind: kind,
                     groupID: groupID,
                     capturedAt: .now,
                     bundleIdentifier: bundleIdentifier,
@@ -463,7 +467,7 @@ final class ClipboardStore: ObservableObject {
 
     private func cloudSyncItems() -> [ClipboardItem] {
         items
-            .filter { $0.kind == .text }
+            .filter { $0.kind == .text || $0.kind == .link }
             .prefix(40)
             .map { item in
                 var syncedItem = item

@@ -348,7 +348,7 @@ struct ContentView: View {
             .filter { $0.groupID == group.id }
             .map { item -> String in
                 switch item.kind {
-                case .text:
+                case .text, .link:
                     return item.textPreview
                 case .image:
                     return "[Image \(item.footerLabel)]"
@@ -517,6 +517,8 @@ private struct ClipboardCard: View {
         switch item.kind {
         case .text:
             textBody
+        case .link:
+            linkBody
         case .image:
             imageBody
         }
@@ -544,23 +546,87 @@ private struct ClipboardCard: View {
         .background(Color(red: 0.08, green: 0.08, blue: 0.09))
     }
 
-    private var imageBody: some View {
-        ZStack(alignment: .bottom) {
-            CheckerboardBackground()
+    private var linkBody: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "link")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color(red: 0.39, green: 0.74, blue: 1.0))
 
-            if let image = item.image {
-                Image(nsImage: image)
-                    .resizable()
-                    .interpolation(.high)
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: 208, maxHeight: 108)
-                    .shadow(color: .black.opacity(0.28), radius: 10, y: 5)
+                    Text(item.linkHost ?? "Link")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(0.94))
+                        .lineLimit(1)
+                }
+
+                Text(item.linkDisplayText)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.74))
+                    .lineSpacing(2)
+                    .textSelection(.enabled)
+                    .lineLimit(5)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
 
             Text(item.footerLabel)
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(Color.white.opacity(0.54))
-                .padding(.bottom, 12)
+                .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(red: 0.08, green: 0.08, blue: 0.09))
+    }
+
+    private var imageBody: some View {
+        GeometryReader { proxy in
+            ZStack {
+                CheckerboardBackground()
+
+                if let image = item.image {
+                    let horizontalInset: CGFloat = 14
+                    let topInset: CGFloat = 12
+                    let bottomInset: CGFloat = 34
+                    let availableWidth = max(proxy.size.width - horizontalInset * 2, 1)
+                    let availableHeight = max(proxy.size.height - topInset - bottomInset, 1)
+                    let imageWidth = CGFloat(item.imageSize?.width ?? Int(image.size.width))
+                    let imageHeight = CGFloat(item.imageSize?.height ?? Int(image.size.height))
+                    let safeImageWidth = max(imageWidth, 1)
+                    let safeImageHeight = max(imageHeight, 1)
+                    let imageAspectRatio = safeImageWidth / safeImageHeight
+                    let containerAspectRatio = availableWidth / availableHeight
+                    let targetSize = imageAspectRatio >= containerAspectRatio
+                        ? CGSize(
+                            width: availableWidth,
+                            height: availableWidth / imageAspectRatio
+                        )
+                        : CGSize(
+                            width: availableHeight * imageAspectRatio,
+                            height: availableHeight
+                        )
+
+                    Image(nsImage: image)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: targetSize.width, height: targetSize.height)
+                        .shadow(color: .black.opacity(0.28), radius: 10, y: 5)
+                        .frame(width: availableWidth, height: availableHeight, alignment: .center)
+                        .contentShape(Rectangle())
+                }
+
+                VStack {
+                    Spacer(minLength: 0)
+
+                    Text(item.footerLabel)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.54))
+                        .padding(.bottom, 12)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.08, green: 0.08, blue: 0.09))

@@ -4,6 +4,7 @@ import SwiftUI
 
 enum ClipboardKind: String, Codable, Hashable {
     case text
+    case link
     case image
 }
 
@@ -31,6 +32,7 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
     init(
         id: UUID = UUID(),
         textContent: String,
+        kind: ClipboardKind = .text,
         groupID: String? = nil,
         capturedAt: Date = .now,
         bundleIdentifier: String?,
@@ -38,7 +40,7 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         isPinned: Bool = false
     ) {
         self.id = id
-        self.kind = .text
+        self.kind = kind
         self.textContent = textContent
         self.imagePNGData = nil
         self.imageSize = nil
@@ -72,7 +74,14 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
     }
 
     var cardTitle: String {
-        kind == .text ? "Text" : "Image"
+        switch kind {
+        case .text:
+            return "Text"
+        case .link:
+            return "Link"
+        case .image:
+            return "Image"
+        }
     }
 
     var relativeTimestamp: String {
@@ -100,15 +109,30 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         switch kind {
         case .text:
             return "\(characterCount) characters"
+        case .link:
+            return linkHost ?? "Link"
         case .image:
             return imageSize?.label ?? "Image"
         }
     }
 
     var searchCorpus: String {
-        [cardTitle, appName, textPreview]
+        [cardTitle, appName, textPreview, linkHost ?? ""]
             .filter { !$0.isEmpty }
             .joined(separator: " ")
+    }
+
+    var resolvedURL: URL? {
+        guard kind == .link, let textContent else { return nil }
+        return URL.normalizedClipboardURL(from: textContent)
+    }
+
+    var linkHost: String? {
+        resolvedURL?.host()
+    }
+
+    var linkDisplayText: String {
+        resolvedURL?.absoluteString ?? textPreview
     }
 
     var sourceStyle: SourceStyle {
@@ -130,12 +154,34 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         return icon
     }
 
-    func matchesTextPayload(_ text: String, in groupID: String?) -> Bool {
-        kind == .text && textContent == text && self.groupID == groupID
+    func matchesStringPayload(_ text: String, in groupID: String?) -> Bool {
+        (kind == .text || kind == .link) && textContent == text && self.groupID == groupID
     }
 
     func matchesImagePayload(_ data: Data, in groupID: String?) -> Bool {
         kind == .image && imagePNGData == data && self.groupID == groupID
+    }
+
+    static func detectKind(for text: String) -> ClipboardKind {
+        URL.normalizedClipboardURL(from: text) != nil ? .link : .text
+    }
+}
+
+private extension URL {
+    static func normalizedClipboardURL(from rawText: String) -> URL? {
+        let trimmed = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !trimmed.contains(" ") else { return nil }
+
+        if let url = URL(string: trimmed), let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme), url.host() != nil {
+            return url
+        }
+
+        let prefixed = "https://\(trimmed)"
+        if let url = URL(string: prefixed), url.host() != nil, trimmed.contains(".") {
+            return url
+        }
+
+        return nil
     }
 }
 

@@ -299,7 +299,7 @@ final class AppState: ObservableObject {
 
     private func preferredPasteShortcutMode(for item: ClipboardItem) -> PasteShortcutMode {
         let alwaysPastePlainText = UserDefaults.standard.object(forKey: AppPreferences.alwaysPastePlainText) as? Bool ?? false
-        guard alwaysPastePlainText, item.kind == .text else { return .regular }
+        guard alwaysPastePlainText, item.kind == .text || item.kind == .link else { return .regular }
         return .plainText
     }
 
