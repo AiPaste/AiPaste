@@ -22,6 +22,7 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
     var textContent: String?
     var imagePNGData: Data?
     var imageSize: PixelSize?
+    var groupID: String?
     var capturedAt: Date
     var bundleIdentifier: String?
     var appName: String
@@ -30,6 +31,7 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
     init(
         id: UUID = UUID(),
         textContent: String,
+        groupID: String? = nil,
         capturedAt: Date = .now,
         bundleIdentifier: String?,
         appName: String,
@@ -40,6 +42,7 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         self.textContent = textContent
         self.imagePNGData = nil
         self.imageSize = nil
+        self.groupID = groupID
         self.capturedAt = capturedAt
         self.bundleIdentifier = bundleIdentifier
         self.appName = appName
@@ -50,6 +53,7 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         id: UUID = UUID(),
         imagePNGData: Data,
         imageSize: PixelSize,
+        groupID: String? = nil,
         capturedAt: Date = .now,
         bundleIdentifier: String?,
         appName: String,
@@ -60,6 +64,7 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         self.textContent = nil
         self.imagePNGData = imagePNGData
         self.imageSize = imageSize
+        self.groupID = groupID
         self.capturedAt = capturedAt
         self.bundleIdentifier = bundleIdentifier
         self.appName = appName
@@ -125,12 +130,12 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         return icon
     }
 
-    func matchesTextPayload(_ text: String) -> Bool {
-        kind == .text && textContent == text
+    func matchesTextPayload(_ text: String, in groupID: String?) -> Bool {
+        kind == .text && textContent == text && self.groupID == groupID
     }
 
-    func matchesImagePayload(_ data: Data) -> Bool {
-        kind == .image && imagePNGData == data
+    func matchesImagePayload(_ data: Data, in groupID: String?) -> Bool {
+        kind == .image && imagePNGData == data && self.groupID == groupID
     }
 }
 

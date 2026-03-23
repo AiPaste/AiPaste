@@ -13,7 +13,7 @@ struct ContentView: View {
                 cardsStrip
             }
             .padding(.horizontal, 20)
-            .padding(.top, 14)
+            .padding(.top, 10)
             .padding(.bottom, 16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -52,7 +52,7 @@ struct ContentView: View {
     }
 
     private var toolbar: some View {
-        HStack(spacing: 18) {
+        HStack(spacing: 16) {
             circleButton(systemName: "arrow.clockwise") {
                 store.captureCurrentClipboard()
             }
@@ -61,7 +61,7 @@ struct ContentView: View {
 
             HStack(spacing: 22) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Color.white.opacity(0.88))
 
                 SelectedClipboardChip(
@@ -71,21 +71,21 @@ struct ContentView: View {
                     store.selectedSourceID = "all"
                 }
 
-                ForEach(store.filterTabs.prefix(6), id: \.id) { tab in
-                    SourceDotTab(
-                        title: tab.label,
-                        color: tab.dot,
-                        isSelected: store.selectedSourceID == tab.id
+                ForEach(store.groups, id: \.id) { group in
+                    GroupTab(
+                        title: group.title,
+                        color: color(for: group.colorToken),
+                        isSelected: store.selectedSourceID == group.id
                     ) {
-                        store.selectedSourceID = tab.id
+                        store.selectedSourceID = group.id
                     }
                 }
 
                 Button {
-                    store.captureCurrentClipboard()
+                    store.createGroup()
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 16, weight: .regular))
+                        .font(.system(size: 15, weight: .regular))
                         .foregroundStyle(Color.white.opacity(0.88))
                 }
                 .buttonStyle(.plain)
@@ -117,9 +117,9 @@ struct ContentView: View {
     private func circleButton(systemName: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
                 Image(systemName: systemName)
-                .font(.system(size: 15, weight: .medium))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Color.white.opacity(0.9))
-                .frame(width: 44, height: 44)
+                .frame(width: 38, height: 38)
                 .background(
                     Circle()
                         .fill(Color.white.opacity(0.07))
@@ -129,6 +129,19 @@ struct ContentView: View {
                 )
         }
         .buttonStyle(.plain)
+    }
+
+    private func color(for token: GroupColorToken) -> Color {
+        switch token {
+        case .red:
+            return Color(red: 1.00, green: 0.27, blue: 0.31)
+        case .orange:
+            return Color(red: 1.00, green: 0.63, blue: 0.19)
+        case .gray:
+            return Color(red: 0.75, green: 0.75, blue: 0.79)
+        case .green:
+            return Color(red: 0.20, green: 0.83, blue: 0.36)
+        }
     }
 }
 
@@ -144,7 +157,7 @@ private struct ClipboardCard: View {
                 header
                 cardBody
             }
-            .frame(width: 278, height: 252)
+            .frame(width: 248, height: 252)
             .background(Color(red: 0.08, green: 0.08, blue: 0.09))
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             .overlay(
@@ -237,7 +250,7 @@ private struct ClipboardCard: View {
                     .resizable()
                     .interpolation(.high)
                     .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: 236, maxHeight: 108)
+                    .frame(maxWidth: 208, maxHeight: 108)
                     .shadow(color: .black.opacity(0.28), radius: 10, y: 5)
             }
 
@@ -268,48 +281,56 @@ private struct SelectedClipboardChip: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: "clock.arrow.circlepath")
-                    .font(.system(size: 11, weight: .semibold))
-                Text("Clipboard")
-                    .font(.system(size: 12, weight: .semibold))
-                Text("\(count)")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.68))
-            }
-            .foregroundStyle(Color.white.opacity(isSelected ? 0.96 : 0.74))
-            .padding(.horizontal, 16)
-            .frame(height: 38)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(Color.white.opacity(isSelected ? 0.10 : 0.05))
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .strokeBorder(Color.white.opacity(isSelected ? 0.16 : 0.08), lineWidth: 1)
-                    )
-            )
+        ToolbarChip(isSelected: isSelected, action: action) {
+            Image(systemName: "clock.arrow.circlepath")
+                .font(.system(size: 10, weight: .semibold))
+            Text("Clipboard")
+                .font(.system(size: 11, weight: .semibold))
+            Text("\(count)")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(Color.white.opacity(isSelected ? 0.68 : 0.56))
         }
-        .buttonStyle(.plain)
     }
 }
 
-private struct SourceDotTab: View {
+private struct GroupTab: View {
     let title: String
     let color: Color
     let isSelected: Bool
     let action: () -> Void
 
     var body: some View {
+        ToolbarChip(isSelected: isSelected, action: action) {
+            Circle()
+                .fill(color)
+                .frame(width: 10, height: 10)
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+        }
+    }
+}
+
+private struct ToolbarChip<Content: View>: View {
+    let isSelected: Bool
+    let action: () -> Void
+    @ViewBuilder let content: Content
+
+    var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                Circle()
-                    .fill(color)
-                    .frame(width: 13, height: 13)
-                Text(title)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(isSelected ? 0.96 : 0.82))
+                content
             }
+            .foregroundStyle(Color.white.opacity(isSelected ? 0.96 : 0.74))
+            .padding(.horizontal, isSelected ? 14 : 2)
+            .frame(height: 34)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(isSelected ? 0.10 : 0.00))
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .strokeBorder(Color.white.opacity(isSelected ? 0.16 : 0.00), lineWidth: 1)
+                    )
+            )
         }
         .buttonStyle(.plain)
     }

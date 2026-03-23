@@ -7,6 +7,10 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
     private let onVisibilityChange: (Bool) -> Void
     private var panel: ClipboardPanel?
     private var didInstallObservers = false
+    private var isAnimatingTransition = false
+
+    private let animationOffset: CGFloat = 56
+    private let animationDuration: TimeInterval = 0.22
 
     init(store: ClipboardStore, onVisibilityChange: @escaping (Bool) -> Void) {
         self.store = store
@@ -16,17 +20,63 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
     func show() {
         let panel = panel ?? makePanel()
         self.panel = panel
-        updateFrame(for: panel)
+        guard let targetFrame = targetFrame() else { return }
+
+        if panel.isVisible, !isAnimatingTransition {
+            panel.setFrame(targetFrame, display: true)
+            NSApp.activate(ignoringOtherApps: true)
+            panel.orderFrontRegardless()
+            panel.makeKey()
+            onVisibilityChange(true)
+            return
+        }
+
+        let startFrame = targetFrame.offsetBy(dx: 0, dy: -animationOffset)
+        isAnimatingTransition = true
+
+        panel.alphaValue = 0
+        panel.setFrame(startFrame, display: true)
         NSApp.activate(ignoringOtherApps: true)
         panel.orderFrontRegardless()
         panel.makeKey()
-        onVisibilityChange(true)
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = animationDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            panel.animator().alphaValue = 1
+            panel.animator().setFrame(targetFrame, display: true)
+        } completionHandler: { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.isAnimatingTransition = false
+                self.onVisibilityChange(true)
+            }
+        }
     }
 
     func hide() {
         guard let panel else { return }
-        panel.orderOut(nil)
-        onVisibilityChange(false)
+        guard panel.isVisible, !isAnimatingTransition else { return }
+        guard let targetFrame = targetFrame() else { return }
+
+        let endFrame = targetFrame.offsetBy(dx: 0, dy: -animationOffset)
+        isAnimatingTransition = true
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = animationDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            panel.animator().alphaValue = 0
+            panel.animator().setFrame(endFrame, display: true)
+        } completionHandler: { [weak self, weak panel] in
+            Task { @MainActor in
+                guard let self, let panel else { return }
+                panel.orderOut(nil)
+                panel.alphaValue = 1
+                panel.setFrame(targetFrame, display: false)
+                self.isAnimatingTransition = false
+                self.onVisibilityChange(false)
+            }
+        }
     }
 
     func windowDidResignKey(_ notification: Notification) {
@@ -77,16 +127,20 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
     }
 
     private func updateFrame(for panel: NSPanel) {
-        guard let screen = targetScreen() else { return }
+        guard let targetFrame = targetFrame() else { return }
+        panel.setFrame(targetFrame, display: true)
+    }
+
+    private func targetFrame() -> NSRect? {
+        guard let screen = targetScreen() else { return nil }
         let screenFrame = screen.frame
         let targetHeight = min(max(screenFrame.height * 0.31, 308), 356)
-        let targetFrame = NSRect(
+        return NSRect(
             x: screenFrame.minX,
             y: screenFrame.minY,
             width: screenFrame.width,
             height: targetHeight
         )
-        panel.setFrame(targetFrame, display: true)
     }
 
     private func targetScreen() -> NSScreen? {

@@ -2,9 +2,47 @@ import AppKit
 import Combine
 import Foundation
 
+enum GroupColorToken: String, Codable, CaseIterable, Hashable {
+    case red
+    case orange
+    case gray
+    case green
+
+    var color: ColorValue {
+        switch self {
+        case .red:
+            return ColorValue(red: 1.00, green: 0.27, blue: 0.31)
+        case .orange:
+            return ColorValue(red: 1.00, green: 0.63, blue: 0.19)
+        case .gray:
+            return ColorValue(red: 0.75, green: 0.75, blue: 0.79)
+        case .green:
+            return ColorValue(red: 0.20, green: 0.83, blue: 0.36)
+        }
+    }
+}
+
+struct ClipboardGroup: Identifiable, Codable, Hashable {
+    let id: String
+    var title: String
+    var colorToken: GroupColorToken
+}
+
+private struct PersistedClipboardState: Codable {
+    var items: [ClipboardItem]
+    var groups: [ClipboardGroup]
+}
+
+struct ColorValue: Hashable {
+    let red: Double
+    let green: Double
+    let blue: Double
+}
+
 @MainActor
 final class ClipboardStore: ObservableObject {
     @Published private(set) var items: [ClipboardItem] = []
+    @Published private(set) var groups: [ClipboardGroup] = []
     @Published var searchText = ""
     @Published var selectedSourceID = "all"
     @Published private(set) var lastCopiedItemID: UUID?
@@ -37,7 +75,14 @@ final class ClipboardStore: ObservableObject {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         let filtered = items.filter { item in
-            let matchesSource = selectedSourceID == "all" || item.sourceStyle.id == selectedSourceID
+            let matchesSource: Bool
+            if selectedSourceID == "all" {
+                matchesSource = true
+            } else if groups.contains(where: { $0.id == selectedSourceID }) {
+                matchesSource = item.groupID == selectedSourceID
+            } else {
+                matchesSource = item.sourceStyle.id == selectedSourceID
+            }
             guard matchesSource else { return false }
             guard !query.isEmpty else { return true }
             return item.searchCorpus.localizedCaseInsensitiveContains(query)
@@ -55,6 +100,19 @@ final class ClipboardStore: ObservableObject {
         var deduped: [String: SourceStyle] = [:]
         items.forEach { deduped[$0.sourceStyle.id] = $0.sourceStyle }
         return deduped.values.sorted { $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending }
+    }
+
+    func createGroup() {
+        let index = groups.count + 1
+        let token = GroupColorToken.allCases[groups.count % GroupColorToken.allCases.count]
+        let group = ClipboardGroup(
+            id: UUID().uuidString,
+            title: "group-\(index)",
+            colorToken: token
+        )
+        groups.append(group)
+        selectedSourceID = group.id
+        persist()
     }
 
     func startMonitoring() {
@@ -116,9 +174,16 @@ final class ClipboardStore: ObservableObject {
         let app = NSWorkspace.shared.frontmostApplication
         let appName = app?.localizedName ?? "Clipboard"
         let bundleIdentifier = app?.bundleIdentifier
+        let currentGroupID = groups.contains(where: { $0.id == selectedSourceID }) ? selectedSourceID : nil
 
         if let imagePayload = currentImagePayload() {
-            upsertImageItem(imagePayload.data, size: imagePayload.size, appName: appName, bundleIdentifier: bundleIdentifier)
+            upsertImageItem(
+                imagePayload.data,
+                size: imagePayload.size,
+                groupID: currentGroupID,
+                appName: appName,
+                bundleIdentifier: bundleIdentifier
+            )
             persist()
             return
         }
@@ -126,12 +191,17 @@ final class ClipboardStore: ObservableObject {
         guard let rawString = pasteboard.string(forType: .string) else { return }
         let normalized = rawString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalized.isEmpty else { return }
-        upsertTextItem(normalized, appName: appName, bundleIdentifier: bundleIdentifier)
+        upsertTextItem(
+            normalized,
+            groupID: currentGroupID,
+            appName: appName,
+            bundleIdentifier: bundleIdentifier
+        )
         persist()
     }
 
-    private func upsertTextItem(_ text: String, appName: String, bundleIdentifier: String?) {
-        if let existingIndex = items.firstIndex(where: { $0.matchesTextPayload(text) }) {
+    private func upsertTextItem(_ text: String, groupID: String?, appName: String, bundleIdentifier: String?) {
+        if let existingIndex = items.firstIndex(where: { $0.matchesTextPayload(text, in: groupID) }) {
             var existing = items.remove(at: existingIndex)
             existing.capturedAt = .now
             existing.appName = appName
@@ -141,6 +211,7 @@ final class ClipboardStore: ObservableObject {
             items.insert(
                 ClipboardItem(
                     textContent: text,
+                    groupID: groupID,
                     capturedAt: .now,
                     bundleIdentifier: bundleIdentifier,
                     appName: appName
@@ -151,8 +222,8 @@ final class ClipboardStore: ObservableObject {
         trimIfNeeded()
     }
 
-    private func upsertImageItem(_ data: Data, size: PixelSize, appName: String, bundleIdentifier: String?) {
-        if let existingIndex = items.firstIndex(where: { $0.matchesImagePayload(data) }) {
+    private func upsertImageItem(_ data: Data, size: PixelSize, groupID: String?, appName: String, bundleIdentifier: String?) {
+        if let existingIndex = items.firstIndex(where: { $0.matchesImagePayload(data, in: groupID) }) {
             var existing = items.remove(at: existingIndex)
             existing.capturedAt = .now
             existing.appName = appName
@@ -164,6 +235,7 @@ final class ClipboardStore: ObservableObject {
                 ClipboardItem(
                     imagePNGData: data,
                     imageSize: size,
+                    groupID: groupID,
                     capturedAt: .now,
                     bundleIdentifier: bundleIdentifier,
                     appName: appName
@@ -191,12 +263,19 @@ final class ClipboardStore: ObservableObject {
 
     private func load() {
         guard let data = try? Data(contentsOf: persistenceURL) else { return }
-        guard let savedItems = try? decoder.decode([ClipboardItem].self, from: data) else { return }
-        items = savedItems
+        if let savedState = try? decoder.decode(PersistedClipboardState.self, from: data) {
+            items = savedState.items
+            groups = savedState.groups
+            return
+        }
+        if let savedItems = try? decoder.decode([ClipboardItem].self, from: data) {
+            items = savedItems
+        }
     }
 
     private func persist() {
-        guard let data = try? encoder.encode(items) else { return }
+        let state = PersistedClipboardState(items: items, groups: groups)
+        guard let data = try? encoder.encode(state) else { return }
         try? data.write(to: persistenceURL, options: .atomic)
     }
 }
