@@ -176,6 +176,7 @@ final class ClipboardStore: ObservableObject {
     }
 
     func copy(_ item: ClipboardItem) {
+        promote(item)
         pasteboard.clearContents()
 
         switch item.kind {
@@ -191,6 +192,7 @@ final class ClipboardStore: ObservableObject {
 
         lastChangeCount = pasteboard.changeCount
         lastCopiedItemID = item.id
+        persist()
     }
 
     func togglePin(_ item: ClipboardItem) {
@@ -217,6 +219,13 @@ final class ClipboardStore: ObservableObject {
     func clearAll() {
         items.removeAll()
         persist()
+    }
+
+    private func promote(_ item: ClipboardItem) {
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+        var updated = items.remove(at: index)
+        updated.capturedAt = .now
+        items.insert(updated, at: 0)
     }
 
     private func captureIfNeeded() {
