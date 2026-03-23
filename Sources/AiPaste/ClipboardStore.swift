@@ -5,8 +5,12 @@ import Foundation
 enum GroupColorToken: String, Codable, CaseIterable, Hashable {
     case red
     case orange
+    case yellow
     case gray
     case green
+    case blue
+    case purple
+    case pink
 
     var color: ColorValue {
         switch self {
@@ -14,10 +18,18 @@ enum GroupColorToken: String, Codable, CaseIterable, Hashable {
             return ColorValue(red: 1.00, green: 0.27, blue: 0.31)
         case .orange:
             return ColorValue(red: 1.00, green: 0.63, blue: 0.19)
+        case .yellow:
+            return ColorValue(red: 0.98, green: 0.76, blue: 0.08)
         case .gray:
             return ColorValue(red: 0.75, green: 0.75, blue: 0.79)
         case .green:
             return ColorValue(red: 0.20, green: 0.83, blue: 0.36)
+        case .blue:
+            return ColorValue(red: 0.15, green: 0.56, blue: 0.96)
+        case .purple:
+            return ColorValue(red: 0.77, green: 0.24, blue: 0.92)
+        case .pink:
+            return ColorValue(red: 1.00, green: 0.24, blue: 0.47)
         }
     }
 }

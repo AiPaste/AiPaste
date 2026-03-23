@@ -5,6 +5,7 @@ struct ContentView: View {
     @EnvironmentObject private var store: ClipboardStore
     @State private var editingGroupID: String?
     @State private var editingGroupTitle = ""
+    @State private var activeGroupMenuID: String?
 
     var body: some View {
         ZStack {
@@ -17,6 +18,51 @@ struct ContentView: View {
             .padding(.horizontal, 20)
             .padding(.top, 10)
             .padding(.bottom, 16)
+        }
+        .overlayPreferenceValue(GroupFramePreferenceKey.self) { preferences in
+            GeometryReader { proxy in
+                if let menuGroupID = activeGroupMenuID,
+                   let anchor = preferences[menuGroupID],
+                   let group = store.group(for: menuGroupID) {
+                    let rect = proxy[anchor]
+                    let menuWidth: CGFloat = 246
+                    let menuHeight: CGFloat = 128
+                    let x = min(max(rect.midX, menuWidth / 2 + 18), proxy.size.width - menuWidth / 2 - 18)
+                    let y = rect.maxY + menuHeight / 2 + 10
+
+                    ZStack {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                activeGroupMenuID = nil
+                            }
+
+                        GroupContextMenuView(
+                            group: group,
+                            onRename: {
+                                editingGroupID = group.id
+                                editingGroupTitle = group.title
+                                store.selectedSourceID = group.id
+                                activeGroupMenuID = nil
+                            },
+                            onShare: {
+                                sharePinboard(for: group)
+                                activeGroupMenuID = nil
+                            },
+                            onDelete: {
+                                deleteGroup(group)
+                                activeGroupMenuID = nil
+                            },
+                            onColorChange: { token in
+                                store.updateGroupColor(id: group.id, token: token)
+                            },
+                            colorResolver: color
+                        )
+                        .frame(width: menuWidth, height: menuHeight)
+                        .position(x: x, y: y)
+                    }
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -75,6 +121,7 @@ struct ContentView: View {
 
                 ForEach(store.groups, id: \.id) { group in
                     EditableGroupTab(
+                        id: group.id,
                         title: group.title,
                         color: color(for: group.colorToken),
                         isSelected: store.selectedSourceID == group.id,
@@ -83,34 +130,13 @@ struct ContentView: View {
                         onSubmit: {
                             store.renameGroup(id: group.id, to: editingGroupTitle)
                             editingGroupID = nil
+                        },
+                        onSecondaryClick: {
+                            activeGroupMenuID = group.id
                         }
                     ) {
+                        activeGroupMenuID = nil
                         store.selectedSourceID = group.id
-                    }
-                    .contextMenu {
-                        Button("Rename", systemImage: "pencil") {
-                            editingGroupID = group.id
-                            editingGroupTitle = group.title
-                            store.selectedSourceID = group.id
-                        }
-
-                        Button("Share Pinboard", systemImage: "square.and.arrow.up") {
-                            sharePinboard(for: group)
-                        }
-
-                        Button("Delete...", systemImage: "trash") {
-                            deleteGroup(group)
-                        }
-
-                        Divider()
-
-                        Menu("Set Color") {
-                            ForEach(GroupColorToken.allCases, id: \.self) { token in
-                                Button(colorMenuTitle(for: token, isSelected: group.colorToken == token)) {
-                                    store.updateGroupColor(id: group.id, token: token)
-                                }
-                            }
-                        }
                     }
                 }
 
@@ -174,29 +200,19 @@ struct ContentView: View {
             return "Red"
         case .orange:
             return "Orange"
+        case .yellow:
+            return "Yellow"
         case .gray:
             return "Gray"
         case .green:
             return "Green"
+        case .blue:
+            return "Blue"
+        case .purple:
+            return "Purple"
+        case .pink:
+            return "Pink"
         }
-    }
-
-    private func colorEmoji(for token: GroupColorToken) -> String {
-        switch token {
-        case .red:
-            return "🔴"
-        case .orange:
-            return "🟠"
-        case .gray:
-            return "⚪"
-        case .green:
-            return "🟢"
-        }
-    }
-
-    private func colorMenuTitle(for token: GroupColorToken, isSelected: Bool) -> String {
-        let prefix = isSelected ? "✓ " : ""
-        return "\(prefix)\(colorEmoji(for: token)) \(colorName(for: token))"
     }
 
     private func gradient(for token: GroupColorToken) -> (start: Color, end: Color) {
@@ -211,6 +227,11 @@ struct ContentView: View {
                 Color(red: 1.00, green: 0.67, blue: 0.25),
                 Color(red: 0.96, green: 0.50, blue: 0.15)
             )
+        case .yellow:
+            return (
+                Color(red: 0.98, green: 0.78, blue: 0.15),
+                Color(red: 0.91, green: 0.63, blue: 0.07)
+            )
         case .gray:
             return (
                 Color(red: 0.63, green: 0.64, blue: 0.69),
@@ -220,6 +241,21 @@ struct ContentView: View {
             return (
                 Color(red: 0.18, green: 0.80, blue: 0.68),
                 Color(red: 0.12, green: 0.70, blue: 0.60)
+            )
+        case .blue:
+            return (
+                Color(red: 0.17, green: 0.58, blue: 0.98),
+                Color(red: 0.10, green: 0.44, blue: 0.89)
+            )
+        case .purple:
+            return (
+                Color(red: 0.78, green: 0.27, blue: 0.93),
+                Color(red: 0.63, green: 0.18, blue: 0.78)
+            )
+        case .pink:
+            return (
+                Color(red: 1.00, green: 0.31, blue: 0.53),
+                Color(red: 0.95, green: 0.20, blue: 0.38)
             )
         }
     }
@@ -350,6 +386,11 @@ private struct ClipboardCard: View {
                     Color(red: 1.00, green: 0.67, blue: 0.25),
                     Color(red: 0.96, green: 0.50, blue: 0.15)
                 )
+            case .yellow:
+                return (
+                    Color(red: 0.98, green: 0.78, blue: 0.15),
+                    Color(red: 0.91, green: 0.63, blue: 0.07)
+                )
             case .gray:
                 return (
                     Color(red: 0.63, green: 0.64, blue: 0.69),
@@ -359,6 +400,21 @@ private struct ClipboardCard: View {
                 return (
                     Color(red: 0.18, green: 0.80, blue: 0.68),
                     Color(red: 0.12, green: 0.70, blue: 0.60)
+                )
+            case .blue:
+                return (
+                    Color(red: 0.17, green: 0.58, blue: 0.98),
+                    Color(red: 0.10, green: 0.44, blue: 0.89)
+                )
+            case .purple:
+                return (
+                    Color(red: 0.78, green: 0.27, blue: 0.93),
+                    Color(red: 0.63, green: 0.18, blue: 0.78)
+                )
+            case .pink:
+                return (
+                    Color(red: 1.00, green: 0.31, blue: 0.53),
+                    Color(red: 0.95, green: 0.20, blue: 0.38)
                 )
             }
         }
@@ -457,12 +513,14 @@ private struct SelectedClipboardChip: View {
 }
 
 private struct EditableGroupTab: View {
+    let id: String
     let title: String
     let color: Color
     let isSelected: Bool
     let isEditing: Bool
     @Binding var draftTitle: String
     let onSubmit: () -> Void
+    let onSecondaryClick: () -> Void
     let action: () -> Void
 
     @FocusState private var isFocused: Bool
@@ -503,15 +561,104 @@ private struct EditableGroupTab: View {
                     )
             )
             .zIndex(2)
+            .anchorPreference(key: GroupFramePreferenceKey.self, value: .bounds) { [id: $0] }
         } else {
-            ToolbarChip(isSelected: isSelected, action: action) {
+            InteractiveGroupChip(
+                id: id,
+                isSelected: isSelected,
+                action: action,
+                secondaryAction: onSecondaryClick
+            ) {
                 Circle()
                     .fill(color)
                     .frame(width: 10, height: 10)
                 Text(title)
                     .font(.system(size: 11, weight: .semibold))
             }
+            .anchorPreference(key: GroupFramePreferenceKey.self, value: .bounds) { [id: $0] }
         }
+    }
+}
+
+private struct GroupContextMenuView: View {
+    let group: ClipboardGroup
+    let onRename: () -> Void
+    let onShare: () -> Void
+    let onDelete: () -> Void
+    let onColorChange: (GroupColorToken) -> Void
+    let colorResolver: (GroupColorToken) -> Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            actionRow("pencil", "Rename", onRename)
+            actionRow("square.and.arrow.up", "Share Pinboard", onShare)
+            actionRow("trash", "Delete...", onDelete)
+
+            Rectangle()
+                .fill(Color.white.opacity(0.10))
+                .frame(height: 1)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+
+            HStack(spacing: 12) {
+                ForEach(GroupColorToken.allCases, id: \.self) { token in
+                    Button {
+                        onColorChange(token)
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(colorResolver(token))
+                                .frame(width: 17, height: 17)
+
+                            if group.colorToken == token {
+                                Circle()
+                                    .strokeBorder(Color.white.opacity(0.88), lineWidth: 2)
+                                    .frame(width: 23, height: 23)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
+        }
+        .padding(.top, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.13, green: 0.14, blue: 0.16).opacity(0.97),
+                            Color(red: 0.11, green: 0.12, blue: 0.15).opacity(0.98)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+                )
+        )
+        .shadow(color: .black.opacity(0.35), radius: 20, y: 12)
+    }
+
+    private func actionRow(_ icon: String, _ title: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .medium))
+                    .frame(width: 14)
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(Color.white.opacity(0.92))
+            .padding(.horizontal, 16)
+            .frame(height: 28)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -522,23 +669,115 @@ private struct ToolbarChip<Content: View>: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
+            ToolbarChipBody(isSelected: isSelected) {
                 content
             }
-            .foregroundStyle(Color.white.opacity(isSelected ? 0.96 : 0.74))
-            .padding(.horizontal, 14)
-            .frame(height: 34)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(Color.white.opacity(isSelected ? 0.10 : 0.00))
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .strokeBorder(Color.white.opacity(isSelected ? 0.16 : 0.00), lineWidth: 1)
-                    )
-            )
         }
         .buttonStyle(.plain)
         .zIndex(isSelected ? 1 : 0)
+    }
+}
+
+private struct ToolbarChipBody<Content: View>: View {
+    let isSelected: Bool
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        HStack(spacing: 8) {
+            content
+        }
+        .foregroundStyle(Color.white.opacity(isSelected ? 0.96 : 0.74))
+        .padding(.horizontal, 14)
+        .frame(height: 34)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color.white.opacity(isSelected ? 0.10 : 0.00))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.white.opacity(isSelected ? 0.16 : 0.00), lineWidth: 1)
+                )
+        )
+    }
+}
+
+private struct InteractiveGroupChip<Content: View>: NSViewRepresentable {
+    let id: String
+    let isSelected: Bool
+    let action: () -> Void
+    let secondaryAction: () -> Void
+    let content: Content
+
+    init(
+        id: String,
+        isSelected: Bool,
+        action: @escaping () -> Void,
+        secondaryAction: @escaping () -> Void,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.id = id
+        self.isSelected = isSelected
+        self.action = action
+        self.secondaryAction = secondaryAction
+        self.content = content()
+    }
+
+    func makeNSView(context: Context) -> InteractiveGroupHostView {
+        let view = InteractiveGroupHostView()
+        view.onPrimaryClick = action
+        view.onSecondaryClick = secondaryAction
+        return view
+    }
+
+    func updateNSView(_ nsView: InteractiveGroupHostView, context: Context) {
+        nsView.onPrimaryClick = action
+        nsView.onSecondaryClick = secondaryAction
+        nsView.hostingView.rootView = AnyView(
+            ToolbarChipBody(isSelected: isSelected) {
+                content
+            }
+        )
+    }
+}
+
+private final class InteractiveGroupHostView: NSView {
+    let hostingView = NSHostingView(rootView: AnyView(EmptyView()))
+    var onPrimaryClick: () -> Void = {}
+    var onSecondaryClick: () -> Void = {}
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        addSubview(hostingView)
+        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            hostingView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            hostingView.topAnchor.constraint(equalTo: topAnchor),
+            hostingView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        self
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onPrimaryClick()
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        onSecondaryClick()
+    }
+}
+
+private struct GroupFramePreferenceKey: PreferenceKey {
+    static let defaultValue: [String: Anchor<CGRect>] = [:]
+
+    static func reduce(value: inout [String: Anchor<CGRect>], nextValue: () -> [String: Anchor<CGRect>]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
     }
 }
 
