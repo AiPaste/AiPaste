@@ -108,9 +108,7 @@ struct ContentView: View {
             Spacer(minLength: 0)
 
             HStack(spacing: 22) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.88))
+                searchField
 
                 SelectedClipboardChip(
                     count: store.items.count,
@@ -157,6 +155,40 @@ struct ContentView: View {
             }
         }
         .padding(.horizontal, 8)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.72))
+
+            TextField("Search", text: $store.searchText)
+                .textFieldStyle(.plain)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.92))
+
+            if !store.searchText.isEmpty {
+                Button {
+                    store.searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.46))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(width: 156, height: 32)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color.white.opacity(0.05))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                )
+        )
     }
 
     private var cardsStrip: some View {
