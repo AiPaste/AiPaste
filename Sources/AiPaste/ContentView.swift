@@ -13,6 +13,14 @@ struct ContentView: View {
         ZStack {
             panelShell
 
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if isSearchFocused {
+                        isSearchFocused = false
+                    }
+                }
+
             VStack(spacing: 18) {
                 toolbar
                 cardsStrip
