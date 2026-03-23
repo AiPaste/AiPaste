@@ -6,6 +6,8 @@ struct ContentView: View {
     @State private var editingGroupID: String?
     @State private var editingGroupTitle = ""
     @State private var activeGroupMenuID: String?
+    @State private var isSearchExpanded = false
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         ZStack {
@@ -100,41 +102,51 @@ struct ContentView: View {
     }
 
     private var toolbar: some View {
-        HStack(spacing: 16) {
-            circleButton(systemName: "arrow.clockwise") {
-                store.captureCurrentClipboard()
+        ZStack {
+            HStack {
+                circleButton(systemName: "arrow.clockwise") {
+                    store.captureCurrentClipboard()
+                }
+
+                Spacer(minLength: 0)
+
+                circleButton(systemName: "ellipsis") {
+                    store.clearAll()
+                }
             }
 
-            Spacer(minLength: 0)
-
-            HStack(spacing: 22) {
-                searchField
+            HStack(spacing: 18) {
+                searchControl
 
                 SelectedClipboardChip(
                     count: store.items.count,
-                    isSelected: store.selectedSourceID == "all"
+                    isSelected: store.selectedSourceID == "all",
+                    isCompact: isSearchFocused
                 ) {
                     store.selectedSourceID = "all"
                 }
 
-                ForEach(store.groups, id: \.id) { group in
-                    EditableGroupTab(
-                        id: group.id,
-                        title: group.title,
-                        color: color(for: group.colorToken),
-                        isSelected: store.selectedSourceID == group.id,
-                        isEditing: editingGroupID == group.id,
-                        draftTitle: $editingGroupTitle,
-                        onSubmit: {
-                            store.renameGroup(id: group.id, to: editingGroupTitle)
-                            editingGroupID = nil
-                        },
-                        onSecondaryClick: {
-                            activeGroupMenuID = group.id
+                HStack(spacing: 8) {
+                    ForEach(store.groups, id: \.id) { group in
+                        EditableGroupTab(
+                            id: group.id,
+                            title: group.title,
+                            color: color(for: group.colorToken),
+                            isSelected: store.selectedSourceID == group.id,
+                            isCompact: isSearchFocused,
+                            isEditing: editingGroupID == group.id,
+                            draftTitle: $editingGroupTitle,
+                            onSubmit: {
+                                store.renameGroup(id: group.id, to: editingGroupTitle)
+                                editingGroupID = nil
+                            },
+                            onSecondaryClick: {
+                                activeGroupMenuID = group.id
+                            }
+                        ) {
+                            activeGroupMenuID = nil
+                            store.selectedSourceID = group.id
                         }
-                    ) {
-                        activeGroupMenuID = nil
-                        store.selectedSourceID = group.id
                     }
                 }
 
@@ -147,14 +159,33 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
             }
-
-            Spacer(minLength: 0)
-
-            circleButton(systemName: "ellipsis") {
-                store.clearAll()
-            }
+            .frame(maxWidth: .infinity, alignment: .center)
         }
         .padding(.horizontal, 8)
+    }
+
+    @ViewBuilder
+    private var searchControl: some View {
+        if isSearchExpanded || !store.searchText.isEmpty {
+            searchField
+                .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
+        } else {
+            Button {
+                withAnimation(.easeOut(duration: 0.18)) {
+                    isSearchExpanded = true
+                }
+                DispatchQueue.main.async {
+                    isSearchFocused = true
+                }
+            } label: {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.82))
+                    .frame(width: 20, height: 20)
+            }
+            .buttonStyle(.plain)
+            .transition(.opacity)
+        }
     }
 
     private var searchField: some View {
@@ -167,6 +198,7 @@ struct ContentView: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Color.white.opacity(0.92))
+                .focused($isSearchFocused)
 
             if !store.searchText.isEmpty {
                 Button {
@@ -189,6 +221,19 @@ struct ContentView: View {
                         .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
                 )
         )
+        .onAppear {
+            DispatchQueue.main.async {
+                isSearchFocused = true
+            }
+        }
+        .onChange(of: isSearchFocused) { _, focused in
+            if !focused && store.searchText.isEmpty {
+                withAnimation(.easeOut(duration: 0.18)) {
+                    isSearchExpanded = false
+                }
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: isSearchExpanded)
     }
 
     private var cardsStrip: some View {
@@ -529,17 +574,21 @@ private struct ClipboardCard: View {
 private struct SelectedClipboardChip: View {
     let count: Int
     let isSelected: Bool
+    let isCompact: Bool
     let action: () -> Void
 
     var body: some View {
         ToolbarChip(isSelected: isSelected, action: action) {
             Image(systemName: "clock.arrow.circlepath")
                 .font(.system(size: 10, weight: .semibold))
-            Text("Clipboard")
-                .font(.system(size: 11, weight: .semibold))
-            Text("\(count)")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(Color.white.opacity(isSelected ? 0.68 : 0.56))
+
+            if !isCompact {
+                Text("Clipboard")
+                    .font(.system(size: 11, weight: .semibold))
+                Text("\(count)")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(Color.white.opacity(isSelected ? 0.68 : 0.56))
+            }
         }
     }
 }
@@ -549,6 +598,7 @@ private struct EditableGroupTab: View {
     let title: String
     let color: Color
     let isSelected: Bool
+    let isCompact: Bool
     let isEditing: Bool
     @Binding var draftTitle: String
     let onSubmit: () -> Void
@@ -598,14 +648,18 @@ private struct EditableGroupTab: View {
             InteractiveGroupChip(
                 id: id,
                 isSelected: isSelected,
+                compact: isCompact,
                 action: action,
                 secondaryAction: onSecondaryClick
             ) {
                 Circle()
                     .fill(color)
-                    .frame(width: 10, height: 10)
-                Text(title)
-                    .font(.system(size: 11, weight: .semibold))
+                    .frame(width: 11, height: 11)
+
+                if !isCompact {
+                    Text(title)
+                        .font(.system(size: 11, weight: .semibold))
+                }
             }
             .anchorPreference(key: GroupFramePreferenceKey.self, value: .bounds) { [id: $0] }
         }
@@ -735,6 +789,7 @@ private struct ToolbarChipBody<Content: View>: View {
 private struct InteractiveGroupChip<Content: View>: NSViewRepresentable {
     let id: String
     let isSelected: Bool
+    let compact: Bool
     let action: () -> Void
     let secondaryAction: () -> Void
     let content: Content
@@ -742,12 +797,14 @@ private struct InteractiveGroupChip<Content: View>: NSViewRepresentable {
     init(
         id: String,
         isSelected: Bool,
+        compact: Bool = false,
         action: @escaping () -> Void,
         secondaryAction: @escaping () -> Void,
         @ViewBuilder content: () -> Content
     ) {
         self.id = id
         self.isSelected = isSelected
+        self.compact = compact
         self.action = action
         self.secondaryAction = secondaryAction
         self.content = content()
@@ -764,10 +821,35 @@ private struct InteractiveGroupChip<Content: View>: NSViewRepresentable {
         nsView.onPrimaryClick = action
         nsView.onSecondaryClick = secondaryAction
         nsView.hostingView.rootView = AnyView(
-            ToolbarChipBody(isSelected: isSelected) {
+            GroupChipContainer(isSelected: isSelected, compact: compact) {
                 content
             }
         )
+    }
+}
+
+private struct GroupChipContainer<Content: View>: View {
+    let isSelected: Bool
+    let compact: Bool
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        if compact {
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(isSelected ? 0.10 : 0.0))
+                    .overlay(
+                        Circle()
+                            .strokeBorder(Color.white.opacity(isSelected ? 0.16 : 0.0), lineWidth: 1)
+                    )
+                content
+            }
+            .frame(width: 28, height: 28)
+        } else {
+            ToolbarChipBody(isSelected: isSelected) {
+                content
+            }
+        }
     }
 }
 
