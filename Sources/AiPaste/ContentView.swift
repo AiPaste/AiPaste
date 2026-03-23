@@ -1,0 +1,370 @@
+import AppKit
+import SwiftUI
+
+struct ContentView: View {
+    @EnvironmentObject private var store: ClipboardStore
+
+    var body: some View {
+        ZStack {
+            panelShell
+
+            VStack(spacing: 18) {
+                toolbar
+                cardsStrip
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 14)
+            .padding(.bottom, 16)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var panelShell: some View {
+        RoundedRectangle(cornerRadius: 30, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.10, green: 0.10, blue: 0.12),
+                        Color(red: 0.12, green: 0.13, blue: 0.18)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+            )
+            .overlay(alignment: .top) {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.14), Color.clear],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .padding(.horizontal, 2)
+            .padding(.vertical, 3)
+            .shadow(color: .black.opacity(0.45), radius: 26, y: 8)
+    }
+
+    private var toolbar: some View {
+        HStack(spacing: 18) {
+            circleButton(systemName: "arrow.clockwise") {
+                store.captureCurrentClipboard()
+            }
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 22) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.88))
+
+                SelectedClipboardChip(
+                    count: store.items.count,
+                    isSelected: store.selectedSourceID == "all"
+                ) {
+                    store.selectedSourceID = "all"
+                }
+
+                ForEach(store.filterTabs.prefix(6), id: \.id) { tab in
+                    SourceDotTab(
+                        title: tab.label,
+                        color: tab.dot,
+                        isSelected: store.selectedSourceID == tab.id
+                    ) {
+                        store.selectedSourceID = tab.id
+                    }
+                }
+
+                Button {
+                    store.captureCurrentClipboard()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundStyle(Color.white.opacity(0.88))
+                }
+                .buttonStyle(.plain)
+            }
+
+            Spacer(minLength: 0)
+
+            circleButton(systemName: "ellipsis") {
+                store.clearAll()
+            }
+        }
+        .padding(.horizontal, 8)
+    }
+
+    private var cardsStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: 26) {
+                ForEach(store.visibleItems) { item in
+                    ClipboardCard(item: item)
+                        .environmentObject(store)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 2)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func circleButton(systemName: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+                Image(systemName: systemName)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.9))
+                .frame(width: 44, height: 44)
+                .background(
+                    Circle()
+                        .fill(Color.white.opacity(0.07))
+                        .overlay(
+                            Circle().strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
+                        )
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct ClipboardCard: View {
+    @EnvironmentObject private var store: ClipboardStore
+    let item: ClipboardItem
+
+    var body: some View {
+        Button {
+            store.copy(item)
+        } label: {
+            VStack(spacing: 0) {
+                header
+                cardBody
+            }
+            .frame(width: 278, height: 252)
+            .background(Color(red: 0.08, green: 0.08, blue: 0.09))
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: borderWidth)
+            )
+            .shadow(color: .black.opacity(0.34), radius: 18, y: 12)
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button("Copy Again") {
+                store.copy(item)
+            }
+            Button(item.isPinned ? "Unpin" : "Pin") {
+                store.togglePin(item)
+            }
+            Divider()
+            Button("Delete") {
+                store.remove(item)
+            }
+        }
+    }
+
+    private var header: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.cardTitle)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(item.sourceStyle.tint)
+                Text(item.relativeTimestamp)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(item.sourceStyle.tint.opacity(0.82))
+            }
+
+            Spacer(minLength: 0)
+
+            AppIconBadge(item: item)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+        .frame(height: 54, alignment: .top)
+        .background(
+            LinearGradient(
+                colors: [item.sourceStyle.accent, item.sourceStyle.secondaryAccent],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        )
+    }
+
+    @ViewBuilder
+    private var cardBody: some View {
+        switch item.kind {
+        case .text:
+            textBody
+        case .image:
+            imageBody
+        }
+    }
+
+    private var textBody: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(item.textPreview)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.92))
+                .lineSpacing(2)
+                .multilineTextAlignment(.leading)
+                .lineLimit(6)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            Text(item.footerLabel)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.54))
+                .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(red: 0.08, green: 0.08, blue: 0.09))
+    }
+
+    private var imageBody: some View {
+        ZStack(alignment: .bottom) {
+            CheckerboardBackground()
+
+            if let image = item.image {
+                Image(nsImage: image)
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: 236, maxHeight: 108)
+                    .shadow(color: .black.opacity(0.28), radius: 10, y: 5)
+            }
+
+            Text(item.footerLabel)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.54))
+                .padding(.bottom, 12)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(red: 0.08, green: 0.08, blue: 0.09))
+    }
+
+    private var borderColor: Color {
+        if store.lastCopiedItemID == item.id {
+            return Color(red: 0.10, green: 0.49, blue: 1.0)
+        }
+        return Color.white.opacity(0.05)
+    }
+
+    private var borderWidth: CGFloat {
+        store.lastCopiedItemID == item.id ? 4 : 1
+    }
+}
+
+private struct SelectedClipboardChip: View {
+    let count: Int
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 11, weight: .semibold))
+                Text("Clipboard")
+                    .font(.system(size: 12, weight: .semibold))
+                Text("\(count)")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Color.white.opacity(0.68))
+            }
+            .foregroundStyle(Color.white.opacity(isSelected ? 0.96 : 0.74))
+            .padding(.horizontal, 16)
+            .frame(height: 38)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(isSelected ? 0.10 : 0.05))
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .strokeBorder(Color.white.opacity(isSelected ? 0.16 : 0.08), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct SourceDotTab: View {
+    let title: String
+    let color: Color
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 13, height: 13)
+                Text(title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(isSelected ? 0.96 : 0.82))
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct AppIconBadge: View {
+    let item: ClipboardItem
+
+    var body: some View {
+        if let icon = item.appIcon() {
+            Image(nsImage: icon)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 52, height: 52)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.38), lineWidth: 1)
+                )
+        } else {
+            ZStack {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(0.92))
+                Image(systemName: item.sourceStyle.icon)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(item.sourceStyle.accent)
+            }
+            .frame(width: 52, height: 52)
+        }
+    }
+}
+
+private struct CheckerboardBackground: View {
+    var body: some View {
+        Canvas { context, size in
+            let square: CGFloat = 12
+            let rows = Int(ceil(size.height / square))
+            let columns = Int(ceil(size.width / square))
+
+            for row in 0..<rows {
+                for column in 0..<columns {
+                    let rect = CGRect(
+                        x: CGFloat(column) * square,
+                        y: CGFloat(row) * square,
+                        width: square,
+                        height: square
+                    )
+                    let isDark = (row + column).isMultiple(of: 2)
+                    context.fill(
+                        Path(rect),
+                        with: .color(isDark ? Color(red: 0.13, green: 0.13, blue: 0.14) : Color(red: 0.17, green: 0.17, blue: 0.18))
+                    )
+                }
+            }
+        }
+    }
+}
