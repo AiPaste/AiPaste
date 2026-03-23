@@ -26,6 +26,9 @@ final class AppState: ObservableObject {
         },
         onConfirmSelection: { [weak self] in
             self?.pasteSelectedItem()
+        },
+        onOpenSettings: { [weak self] in
+            self?.openSettings(hidePanel: true)
         }
     )
     private lazy var hotKeyManager = GlobalHotKeyManager {
@@ -65,6 +68,17 @@ final class AppState: ObservableObject {
         panelController.hide()
     }
 
+    func openSettings(hidePanel: Bool = false) {
+        logger.debug("openSettings requested hidePanel=\(hidePanel, privacy: .public)")
+        if hidePanel {
+            self.hidePanel()
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + (hidePanel ? 0.12 : 0.0)) {
+            SettingsWindowController.shared.present()
+        }
+    }
+
     func captureClipboard() {
         store.captureCurrentClipboard()
     }
@@ -73,10 +87,17 @@ final class AppState: ObservableObject {
         selectedItemID = item.id
         logger.debug("paste requested for item \(item.id.uuidString, privacy: .public) kind=\(item.kind.rawValue, privacy: .public)")
         store.copy(item)
+        let pasteDestination = preferredPasteDestination()
         let targetApplication = lastTargetApplication
         pasteAutomationAvailable = ensureAccessibilityPermission(prompt: true)
+        logger.debug("paste destination mode: \(pasteDestination.rawValue, privacy: .public)")
         logger.debug("paste automation available: \(self.pasteAutomationAvailable, privacy: .public)")
         logger.debug("paste target app: \(targetApplication?.localizedName ?? "nil", privacy: .public) [\(targetApplication?.bundleIdentifier ?? "nil", privacy: .public)]")
+
+        if pasteDestination == .clipboard {
+            hidePanel()
+            return
+        }
 
         guard pasteAutomationAvailable, let targetApplication else {
             logger.error("paste aborted before activation. accessibility=\(self.pasteAutomationAvailable, privacy: .public) targetAppExists=\(targetApplication != nil, privacy: .public)")
@@ -217,5 +238,10 @@ final class AppState: ObservableObject {
         }
         let opened = NSWorkspace.shared.open(url)
         logger.debug("open accessibility settings result=\(opened, privacy: .public)")
+    }
+
+    private func preferredPasteDestination() -> PasteDestinationMode {
+        let rawValue = UserDefaults.standard.string(forKey: AppPreferences.pasteDestination) ?? PasteDestinationMode.activeApp.rawValue
+        return PasteDestinationMode(rawValue: rawValue) ?? .activeApp
     }
 }

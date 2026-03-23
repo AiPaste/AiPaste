@@ -15,6 +15,7 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
     private let onVisibilityChange: (Bool) -> Void
     private let onNavigationCommand: (ClipboardPanelNavigationCommand) -> Void
     private let onConfirmSelection: () -> Void
+    private let onOpenSettings: () -> Void
     private var panel: ClipboardPanel?
     private var didInstallObservers = false
     private var isAnimatingTransition = false
@@ -28,12 +29,14 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
         store: ClipboardStore,
         onVisibilityChange: @escaping (Bool) -> Void,
         onNavigationCommand: @escaping (ClipboardPanelNavigationCommand) -> Void,
-        onConfirmSelection: @escaping () -> Void
+        onConfirmSelection: @escaping () -> Void,
+        onOpenSettings: @escaping () -> Void
     ) {
         self.store = store
         self.onVisibilityChange = onVisibilityChange
         self.onNavigationCommand = onNavigationCommand
         self.onConfirmSelection = onConfirmSelection
+        self.onOpenSettings = onOpenSettings
     }
 
     func show() {
@@ -141,6 +144,7 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
         }
         panel.onNavigationCommand = onNavigationCommand
         panel.onConfirmSelection = onConfirmSelection
+        panel.onOpenSettings = onOpenSettings
 
         if !didInstallObservers {
             didInstallObservers = true
@@ -167,6 +171,13 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
         keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, let panel = self.panel, panel.isVisible else { return event }
             self.logger.debug("local key monitor received keyCode=\(event.keyCode, privacy: .public)")
+
+            if event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command),
+               event.charactersIgnoringModifiers == "," {
+                self.logger.debug("local key monitor opening settings via Command-Comma")
+                self.onOpenSettings()
+                return nil
+            }
 
             switch event.keyCode {
             case 53:
@@ -242,6 +253,7 @@ final class ClipboardPanel: NSPanel {
     var onEscape: (() -> Void)?
     var onNavigationCommand: ((ClipboardPanelNavigationCommand) -> Void)?
     var onConfirmSelection: (() -> Void)?
+    var onOpenSettings: (() -> Void)?
     private let logger = Logger(subsystem: "AiPaste", category: "PanelWindow")
 
     override var canBecomeKey: Bool { true }
@@ -249,6 +261,13 @@ final class ClipboardPanel: NSPanel {
 
     override func keyDown(with event: NSEvent) {
         logger.debug("panel keyDown received keyCode=\(event.keyCode, privacy: .public)")
+
+        if event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command),
+           event.charactersIgnoringModifiers == "," {
+            onOpenSettings?()
+            return
+        }
+
         switch event.keyCode {
         case 53:
             onEscape?()
@@ -276,6 +295,11 @@ final class ClipboardPanel: NSPanel {
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         logger.debug("panel performKeyEquivalent received keyCode=\(event.keyCode, privacy: .public)")
+        if event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command),
+           event.charactersIgnoringModifiers == "," {
+            onOpenSettings?()
+            return true
+        }
         switch event.keyCode {
         case 36, 76:
             onConfirmSelection?()

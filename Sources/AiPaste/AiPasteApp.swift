@@ -11,6 +11,11 @@ struct AiPasteApp: App {
                 appState.togglePanel()
             }
 
+            Button("Settings...") {
+                appState.openSettings()
+            }
+            .keyboardShortcut(",", modifiers: [.command])
+
             Button("Capture Clipboard") {
                 appState.captureClipboard()
             }
