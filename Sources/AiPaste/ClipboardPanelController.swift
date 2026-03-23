@@ -1,10 +1,18 @@
 import AppKit
 import SwiftUI
 
+enum ClipboardPanelNavigationCommand {
+    case left
+    case right
+    case up
+    case down
+}
+
 @MainActor
 final class ClipboardPanelController: NSObject, NSWindowDelegate {
     private let store: ClipboardStore
     private let onVisibilityChange: (Bool) -> Void
+    private let onNavigationCommand: (ClipboardPanelNavigationCommand) -> Void
     private var panel: ClipboardPanel?
     private var didInstallObservers = false
     private var isAnimatingTransition = false
@@ -12,9 +20,14 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
     private let animationOffset: CGFloat = 56
     private let animationDuration: TimeInterval = 0.22
 
-    init(store: ClipboardStore, onVisibilityChange: @escaping (Bool) -> Void) {
+    init(
+        store: ClipboardStore,
+        onVisibilityChange: @escaping (Bool) -> Void,
+        onNavigationCommand: @escaping (ClipboardPanelNavigationCommand) -> Void
+    ) {
         self.store = store
         self.onVisibilityChange = onVisibilityChange
+        self.onNavigationCommand = onNavigationCommand
     }
 
     func show() {
@@ -112,6 +125,7 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
         panel.onEscape = { [weak self] in
             self?.hide()
         }
+        panel.onNavigationCommand = onNavigationCommand
 
         if !didInstallObservers {
             didInstallObservers = true
@@ -156,14 +170,30 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
 @MainActor
 final class ClipboardPanel: NSPanel {
     var onEscape: (() -> Void)?
+    var onNavigationCommand: ((ClipboardPanelNavigationCommand) -> Void)?
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 {
+        switch event.keyCode {
+        case 53:
             onEscape?()
             return
+        case 123:
+            onNavigationCommand?(.left)
+            return
+        case 124:
+            onNavigationCommand?(.right)
+            return
+        case 125:
+            onNavigationCommand?(.down)
+            return
+        case 126:
+            onNavigationCommand?(.up)
+            return
+        default:
+            break
         }
         super.keyDown(with: event)
     }

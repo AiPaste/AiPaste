@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 struct ContentView: View {
+    @ObservedObject private var appState = AppState.shared
     @EnvironmentObject private var store: ClipboardStore
     @State private var editingGroupID: String?
     @State private var editingGroupTitle = ""
@@ -75,6 +76,18 @@ struct ContentView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            appState.syncSelectionToVisibleItems(preferFirst: true)
+        }
+        .onChange(of: store.selectedSourceID) { _, _ in
+            appState.syncSelectionToVisibleItems(preferFirst: true)
+        }
+        .onChange(of: store.searchText) { _, _ in
+            appState.syncSelectionToVisibleItems()
+        }
+        .onChange(of: store.visibleItems.map(\.id)) { _, _ in
+            appState.syncSelectionToVisibleItems()
+        }
     }
 
     private var panelShell: some View {
@@ -245,17 +258,26 @@ struct ContentView: View {
     }
 
     private var cardsStrip: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(alignment: .top, spacing: 26) {
-                ForEach(store.visibleItems) { item in
-                    ClipboardCard(item: item)
-                        .environmentObject(store)
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 26) {
+                    ForEach(store.visibleItems) { item in
+                        ClipboardCard(item: item)
+                            .environmentObject(store)
+                            .id(item.id)
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 2)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .onChange(of: appState.selectedItemID) { _, selectedItemID in
+                guard let selectedItemID else { return }
+                withAnimation(.easeOut(duration: 0.16)) {
+                    proxy.scrollTo(selectedItemID, anchor: .center)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 2)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func circleButton(systemName: String, action: @escaping () -> Void) -> some View {
@@ -379,12 +401,13 @@ struct ContentView: View {
 }
 
 private struct ClipboardCard: View {
+    @ObservedObject private var appState = AppState.shared
     @EnvironmentObject private var store: ClipboardStore
     let item: ClipboardItem
 
     var body: some View {
         Button {
-            store.copy(item)
+            AppState.shared.paste(item)
         } label: {
             VStack(spacing: 0) {
                 header
@@ -568,6 +591,9 @@ private struct ClipboardCard: View {
     }
 
     private var borderColor: Color {
+        if appState.selectedItemID == item.id {
+            return Color(red: 0.18, green: 0.60, blue: 1.0)
+        }
         if store.lastCopiedItemID == item.id {
             return Color(red: 0.10, green: 0.49, blue: 1.0)
         }
@@ -575,7 +601,10 @@ private struct ClipboardCard: View {
     }
 
     private var borderWidth: CGFloat {
-        store.lastCopiedItemID == item.id ? 4 : 1
+        if appState.selectedItemID == item.id {
+            return 3
+        }
+        return store.lastCopiedItemID == item.id ? 4 : 1
     }
 }
 
