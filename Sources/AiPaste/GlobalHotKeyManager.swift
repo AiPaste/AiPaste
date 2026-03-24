@@ -11,7 +11,7 @@ final class GlobalHotKeyManager {
         self.handler = handler
     }
 
-    func register() {
+    func register(shortcut: ShortcutDescriptor) {
         unregister()
 
         var eventSpec = EventTypeSpec(
@@ -48,8 +48,8 @@ final class GlobalHotKeyManager {
         )
 
         RegisterEventHotKey(
-            UInt32(kVK_ANSI_V),
-            UInt32(cmdKey | shiftKey),
+            UInt32(shortcut.keyCode),
+            shortcut.carbonModifiers,
             hotKeyID,
             GetApplicationEventTarget(),
             0,

@@ -14,12 +14,10 @@ struct AiPasteApp: App {
             Button("Settings...") {
                 appState.openSettings()
             }
-            .keyboardShortcut(",", modifiers: [.command])
 
             Button("Capture Clipboard") {
                 appState.captureClipboard()
             }
-            .keyboardShortcut("v", modifiers: [.command, .shift])
 
             Divider()
 

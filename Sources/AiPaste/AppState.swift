@@ -15,6 +15,7 @@ final class AppState: ObservableObject {
     static let shared = AppState()
 
     let store = ClipboardStore()
+    let shortcutManager = AppShortcutManager.shared
     @Published private(set) var isPanelVisible = false
     @Published private(set) var pasteAutomationAvailable = AXIsProcessTrusted()
     @Published var openAtLoginEnabled = false
@@ -48,13 +49,20 @@ final class AppState: ObservableObject {
         }
     }
 
-    private init() {}
+    private init() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleShortcutsDidChange),
+            name: .aiPasteShortcutsDidChange,
+            object: nil
+        )
+    }
 
     func start() {
         pasteAutomationAvailable = ensureAccessibilityPermission(prompt: false)
         refreshOpenAtLoginStatus()
         runInBackgroundEnabled = UserDefaults.standard.object(forKey: AppPreferences.runInBackground) as? Bool ?? true
-        hotKeyManager.register()
+        registerGlobalShortcuts()
     }
 
     func togglePanel() {
@@ -303,6 +311,14 @@ final class AppState: ObservableObject {
         return .plainText
     }
 
+    @objc private func handleShortcutsDidChange() {
+        registerGlobalShortcuts()
+    }
+
+    private func registerGlobalShortcuts() {
+        hotKeyManager.register(shortcut: shortcutManager.shortcut(for: .showPanel))
+    }
+
     func evaluateBackgroundPolicy() {
         let shouldRunInBackground = runInBackgroundEnabled
         let panelVisible = isPanelVisible
@@ -329,5 +345,9 @@ final class AppState: ObservableObject {
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
         alert.runModal()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }

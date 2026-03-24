@@ -12,6 +12,7 @@ enum ClipboardPanelNavigationCommand {
 @MainActor
 final class ClipboardPanelController: NSObject, NSWindowDelegate {
     private let store: ClipboardStore
+    private let shortcutManager = AppShortcutManager.shared
     private let onVisibilityChange: (Bool) -> Void
     private let onNavigationCommand: (ClipboardPanelNavigationCommand) -> Void
     private let onConfirmSelection: () -> Void
@@ -145,6 +146,9 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
         panel.onNavigationCommand = onNavigationCommand
         panel.onConfirmSelection = onConfirmSelection
         panel.onOpenSettings = onOpenSettings
+        panel.shortcutHandler = { [weak self] event in
+            self?.handleShortcut(event) ?? false
+        }
 
         if !didInstallObservers {
             didInstallObservers = true
@@ -171,36 +175,10 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
         keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, let panel = self.panel, panel.isVisible else { return event }
             self.logger.debug("local key monitor received keyCode=\(event.keyCode, privacy: .public)")
-
-            if event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command),
-               event.charactersIgnoringModifiers == "," {
-                self.logger.debug("local key monitor opening settings via Command-Comma")
-                self.onOpenSettings()
+            if self.handleShortcut(event) {
                 return nil
             }
-
-            switch event.keyCode {
-            case 53:
-                self.onConfirmOrEscape(.escape)
-                return nil
-            case 36, 76:
-                self.onConfirmOrEscape(.confirm)
-                return nil
-            case 123:
-                self.onNavigationCommand(.left)
-                return nil
-            case 124:
-                self.onNavigationCommand(.right)
-                return nil
-            case 125:
-                self.onNavigationCommand(.down)
-                return nil
-            case 126:
-                self.onNavigationCommand(.up)
-                return nil
-            default:
-                return event
-            }
+            return event
         }
     }
 
@@ -219,6 +197,45 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
         case .escape:
             hide()
         }
+    }
+
+    private func handleShortcut(_ event: NSEvent) -> Bool {
+        if shortcutManager.matches(event, action: .openSettings) {
+            logger.debug("matched shortcut action openSettings")
+            onOpenSettings()
+            return true
+        }
+        if shortcutManager.matches(event, action: .hidePanel) {
+            logger.debug("matched shortcut action hidePanel")
+            onConfirmOrEscape(.escape)
+            return true
+        }
+        if shortcutManager.matches(event, action: .pasteSelectedItem) {
+            logger.debug("matched shortcut action pasteSelectedItem")
+            onConfirmOrEscape(.confirm)
+            return true
+        }
+        if shortcutManager.matches(event, action: .previousItem) {
+            logger.debug("matched shortcut action previousItem")
+            onNavigationCommand(.left)
+            return true
+        }
+        if shortcutManager.matches(event, action: .nextItem) {
+            logger.debug("matched shortcut action nextItem")
+            onNavigationCommand(.right)
+            return true
+        }
+        if shortcutManager.matches(event, action: .nextGroup) {
+            logger.debug("matched shortcut action nextGroup")
+            onNavigationCommand(.down)
+            return true
+        }
+        if shortcutManager.matches(event, action: .previousGroup) {
+            logger.debug("matched shortcut action previousGroup")
+            onNavigationCommand(.up)
+            return true
+        }
+        return false
     }
 
     private func targetFrame() -> NSRect? {
@@ -254,6 +271,7 @@ final class ClipboardPanel: NSPanel {
     var onNavigationCommand: ((ClipboardPanelNavigationCommand) -> Void)?
     var onConfirmSelection: (() -> Void)?
     var onOpenSettings: (() -> Void)?
+    var shortcutHandler: ((NSEvent) -> Bool)?
     private let logger = Logger(subsystem: "AiPaste", category: "PanelWindow")
 
     override var canBecomeKey: Bool { true }
@@ -261,55 +279,18 @@ final class ClipboardPanel: NSPanel {
 
     override func keyDown(with event: NSEvent) {
         logger.debug("panel keyDown received keyCode=\(event.keyCode, privacy: .public)")
-
-        if event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command),
-           event.charactersIgnoringModifiers == "," {
-            onOpenSettings?()
+        if shortcutHandler?(event) == true {
             return
-        }
-
-        switch event.keyCode {
-        case 53:
-            onEscape?()
-            return
-        case 36, 76:
-            onConfirmSelection?()
-            return
-        case 123:
-            onNavigationCommand?(.left)
-            return
-        case 124:
-            onNavigationCommand?(.right)
-            return
-        case 125:
-            onNavigationCommand?(.down)
-            return
-        case 126:
-            onNavigationCommand?(.up)
-            return
-        default:
-            break
         }
         super.keyDown(with: event)
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         logger.debug("panel performKeyEquivalent received keyCode=\(event.keyCode, privacy: .public)")
-        if event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command),
-           event.charactersIgnoringModifiers == "," {
-            onOpenSettings?()
+        if shortcutHandler?(event) == true {
             return true
         }
-        switch event.keyCode {
-        case 36, 76:
-            onConfirmSelection?()
-            return true
-        case 53:
-            onEscape?()
-            return true
-        default:
-            return super.performKeyEquivalent(with: event)
-        }
+        return super.performKeyEquivalent(with: event)
     }
 
     override func cancelOperation(_ sender: Any?) {

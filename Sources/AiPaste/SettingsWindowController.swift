@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import SwiftUI
 
 @MainActor
@@ -51,7 +52,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
 private struct SettingsRootView: View {
     @EnvironmentObject private var appState: AppState
+    @ObservedObject private var shortcutManager = AppShortcutManager.shared
     @ObservedObject private var store = AppState.shared.store
+    @StateObject private var shortcutRecorder = ShortcutRecordingController()
     @State private var selectedPane: SettingsPane = .general
     @AppStorage(AppPreferences.soundEffects) private var soundEffects = true
     @AppStorage(AppPreferences.pasteDestination) private var pasteDestinationRaw = PasteDestinationMode.activeApp.rawValue
@@ -118,10 +121,7 @@ private struct SettingsRootView: View {
                 message: "Accessibility and clipboard permissions are managed by macOS System Settings."
             )
         case .shortcuts:
-            placeholderPane(
-                title: "Shortcuts",
-                message: "Use Shift-Command-V to show the panel, and Command-Comma to open Settings while the panel is visible."
-            )
+            shortcutsPane
         case .subscription:
             placeholderPane(
                 title: "Subscription",
@@ -254,6 +254,56 @@ private struct SettingsRootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
+    private var shortcutsPane: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Shortcuts")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color.white.opacity(0.96))
+
+                SettingsCard {
+                    Text("Current shortcuts are listed below. Global shortcuts work from anywhere; panel shortcuts only work while the panel is visible.")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.72))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                ShortcutSectionCard(
+                    title: "Global",
+                    actions: ShortcutAction.allCases.filter { $0.sectionTitle == "Global" },
+                    shortcutManager: shortcutManager,
+                    recorder: shortcutRecorder
+                )
+
+                ShortcutSectionCard(
+                    title: "Panel Navigation",
+                    actions: ShortcutAction.allCases.filter { $0.sectionTitle == "Panel Navigation" },
+                    shortcutManager: shortcutManager,
+                    recorder: shortcutRecorder
+                )
+
+                ShortcutSectionCard(
+                    title: "Panel Actions",
+                    actions: ShortcutAction.allCases.filter { $0.sectionTitle == "Panel Actions" },
+                    shortcutManager: shortcutManager,
+                    recorder: shortcutRecorder
+                )
+
+                HStack {
+                    Spacer(minLength: 0)
+
+                    Button("Reset shortcuts to default…") {
+                        shortcutManager.resetAll()
+                    }
+                    .buttonStyle(SettingsSecondaryButtonStyle())
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
     private func placeholderPane(title: String, message: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
@@ -333,6 +383,136 @@ private struct SettingsSidebarItem: View {
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct ShortcutSectionCard: View {
+    let title: String
+    let actions: [ShortcutAction]
+    @ObservedObject var shortcutManager: AppShortcutManager
+    @ObservedObject var recorder: ShortcutRecordingController
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.86))
+
+            SettingsCard {
+                VStack(spacing: 0) {
+                    ForEach(Array(actions.enumerated()), id: \.element.id) { index, action in
+                        ShortcutRow(
+                            action: action,
+                            shortcut: shortcutManager.shortcut(for: action),
+                            isRecording: recorder.recordingAction == action,
+                            onRecord: {
+                                recorder.startRecording(for: action) { descriptor in
+                                    shortcutManager.update(action, descriptor: descriptor)
+                                }
+                            },
+                            onReset: {
+                                shortcutManager.reset(action)
+                            }
+                        )
+
+                        if index < actions.count - 1 {
+                            Divider()
+                                .overlay(Color.white.opacity(0.08))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct ShortcutRow: View {
+    let action: ShortcutAction
+    let shortcut: ShortcutDescriptor
+    let isRecording: Bool
+    let onRecord: () -> Void
+    let onReset: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(action.title)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.92))
+
+            Spacer(minLength: 0)
+
+            Button(action: onRecord) {
+                HStack(spacing: 6) {
+                    ForEach(displayTokens, id: \.self) { key in
+                        Text(key)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Color.white.opacity(0.92))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.white.opacity(0.08))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                            .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+                                    )
+                            )
+                    }
+                }
+                .frame(minWidth: 112, alignment: .trailing)
+            }
+            .buttonStyle(.plain)
+
+            Button(action: onReset) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.72))
+                    .frame(width: 20, height: 20)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 8)
+    }
+
+    private var displayTokens: [String] {
+        isRecording ? ["Type", "Shortcut"] : shortcut.displayTokens
+    }
+}
+
+@MainActor
+private final class ShortcutRecordingController: ObservableObject {
+    @Published var recordingAction: ShortcutAction?
+
+    private var monitor: Any?
+
+    func startRecording(for action: ShortcutAction, onRecord: @escaping (ShortcutDescriptor) -> Void) {
+        stopRecording()
+        recordingAction = action
+
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+
+            if event.keyCode == UInt16(kVK_Escape), event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty {
+                self.stopRecording()
+                return nil
+            }
+
+            guard let descriptor = ShortcutDescriptor.capture(from: event) else {
+                return nil
+            }
+
+            onRecord(descriptor)
+            self.stopRecording()
+            return nil
+        }
+    }
+
+    func stopRecording() {
+        recordingAction = nil
+        if let monitor {
+            NSEvent.removeMonitor(monitor)
+            self.monitor = nil
+        }
     }
 }
 
