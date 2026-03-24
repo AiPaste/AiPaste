@@ -79,8 +79,10 @@ final class ClipboardStore: ObservableObject {
     private let cloudStateKey = "icloud.clipboardState"
     private let deviceID = Host.current().localizedName ?? UUID().uuidString
     private var isApplyingCloudState = false
+    private let monitoringEnabled: Bool
 
-    init() {
+    init(enableMonitoring: Bool = true) {
+        monitoringEnabled = enableMonitoring
         lastChangeCount = pasteboard.changeCount
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         decoder.dateDecodingStrategy = .iso8601
@@ -95,7 +97,9 @@ final class ClipboardStore: ObservableObject {
         load()
         applyRetentionPolicy()
         configureCloudSync()
-        startMonitoring()
+        if monitoringEnabled {
+            startMonitoring()
+        }
     }
 
     var visibleItems: [ClipboardItem] {
@@ -250,6 +254,13 @@ final class ClipboardStore: ObservableObject {
         UserDefaults.standard.set(retention.rawValue, forKey: AppPreferences.historyRetention)
         applyRetentionPolicy()
         persist()
+    }
+
+    func reloadFromDisk() {
+        items = []
+        groups = []
+        load()
+        applyRetentionPolicy()
     }
 
     private func promote(_ item: ClipboardItem) {

@@ -23,6 +23,15 @@ final class PrivacySettingsStore: ObservableObject {
     private let decoder = JSONDecoder()
 
     private init() {
+        showDuringScreenSharing = true
+        generateLinkPreviews = true
+        ignoreConfidentialContent = true
+        ignoreTransientContent = true
+        ignoredApplications = []
+        reloadFromDefaults()
+    }
+
+    func reloadFromDefaults() {
         showDuringScreenSharing = defaults.object(forKey: AppPreferences.showDuringScreenSharing) as? Bool ?? true
         generateLinkPreviews = defaults.object(forKey: AppPreferences.generateLinkPreviews) as? Bool ?? true
         ignoreConfidentialContent = defaults.object(forKey: AppPreferences.ignoreConfidentialContent) as? Bool ?? true
@@ -30,7 +39,7 @@ final class PrivacySettingsStore: ObservableObject {
 
         if let data = defaults.data(forKey: AppPreferences.ignoredApplications),
            let decoded = try? decoder.decode([IgnoredApplication].self, from: data) {
-            ignoredApplications = decoded
+            ignoredApplications = decoded.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         } else {
             ignoredApplications = []
         }

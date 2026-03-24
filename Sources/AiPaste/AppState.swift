@@ -56,6 +56,12 @@ final class AppState: ObservableObject {
             name: .aiPasteShortcutsDidChange,
             object: nil
         )
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(handleBridgeCommand(_:)),
+            name: AppCommandBridge.commandNotification,
+            object: nil
+        )
     }
 
     func start() {
@@ -320,6 +326,47 @@ final class AppState: ObservableObject {
         hotKeyManager.register(shortcut: shortcutManager.shortcut(for: .showPanel))
     }
 
+    @objc private func handleBridgeCommand(_ notification: Notification) {
+        guard let rawValue = notification.userInfo?[AppCommandBridge.commandKey] as? String,
+              let command = AppBridgeCommand(rawValue: rawValue) else {
+            return
+        }
+
+        logger.debug("received bridge command \(command.rawValue, privacy: .public)")
+
+        switch command {
+        case .showPanel:
+            showPanel()
+        case .hidePanel:
+            hidePanel()
+        case .togglePanel:
+            togglePanel()
+        case .openSettings:
+            openSettings()
+        case .captureClipboard:
+            captureClipboard()
+        case .reloadStore:
+            store.reloadFromDisk()
+            syncSelectionToVisibleItems(preferFirst: true)
+        case .refreshSettings:
+            refreshSettingsFromDefaults()
+            applyWindowPrivacySettings()
+            evaluateBackgroundPolicy()
+        }
+    }
+
+    private func refreshSettingsFromDefaults() {
+        let defaults = UserDefaults.standard
+        runInBackgroundEnabled = defaults.object(forKey: AppPreferences.runInBackground) as? Bool ?? true
+        refreshOpenAtLoginStatus()
+        PrivacySettingsStore.shared.reloadFromDefaults()
+
+        let iCloudEnabled = defaults.object(forKey: AppPreferences.iCloudSync) as? Bool ?? true
+        if store.iCloudSyncEnabled != iCloudEnabled {
+            store.setICloudSync(iCloudEnabled)
+        }
+    }
+
     func evaluateBackgroundPolicy() {
         let shouldRunInBackground = runInBackgroundEnabled
         let panelVisible = isPanelVisible
@@ -356,5 +403,6 @@ final class AppState: ObservableObject {
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+        DistributedNotificationCenter.default().removeObserver(self)
     }
 }
