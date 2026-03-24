@@ -57,12 +57,47 @@ final class PrivacySettingsStore: ObservableObject {
         defaults.set(value, forKey: AppPreferences.ignoreTransientContent)
     }
 
-    func addIgnoredApplication(bundleIdentifier: String, name: String) {
-        guard !bundleIdentifier.isEmpty else { return }
-        guard !ignoredApplications.contains(where: { $0.bundleIdentifier == bundleIdentifier }) else { return }
-        ignoredApplications.append(IgnoredApplication(bundleIdentifier: bundleIdentifier, name: name))
+    @discardableResult
+    func addIgnoredApplication(bundleIdentifier: String, name: String) -> IgnoredApplication? {
+        guard !bundleIdentifier.isEmpty else { return nil }
+        if let existingApplication = ignoredApplications.first(where: { $0.bundleIdentifier == bundleIdentifier }) {
+            return existingApplication
+        }
+
+        let ignoredApplication = IgnoredApplication(bundleIdentifier: bundleIdentifier, name: name)
+        ignoredApplications.append(ignoredApplication)
         ignoredApplications.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         persistIgnoredApplications()
+        return ignoredApplication
+    }
+
+    @discardableResult
+    func chooseAndAddIgnoredApplication() -> IgnoredApplication? {
+        let panel = NSOpenPanel()
+        panel.title = "Choose Application to Ignore"
+        panel.prompt = "Ignore"
+        panel.allowsMultipleSelection = false
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.application]
+        panel.directoryURL = preferredApplicationsDirectoryURL
+
+        guard panel.runModal() == .OK, let url = panel.url else { return nil }
+        return addIgnoredApplication(from: url)
+    }
+
+    @discardableResult
+    func addIgnoredApplication(from appURL: URL) -> IgnoredApplication? {
+        let bundle = Bundle(url: appURL)
+        let bundleIdentifier = bundle?.bundleIdentifier
+            ?? Bundle(path: appURL.path)?.bundleIdentifier
+            ?? inferredBundleIdentifier(from: appURL)
+        let displayName = bundle?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
+            ?? bundle?.object(forInfoDictionaryKey: "CFBundleName") as? String
+            ?? appURL.deletingPathExtension().lastPathComponent
+
+        guard let bundleIdentifier else { return nil }
+        return addIgnoredApplication(bundleIdentifier: bundleIdentifier, name: displayName)
     }
 
     func removeIgnoredApplication(bundleIdentifier: String) {
@@ -103,5 +138,31 @@ final class PrivacySettingsStore: ObservableObject {
         if let data = try? encoder.encode(ignoredApplications) {
             defaults.set(data, forKey: AppPreferences.ignoredApplications)
         }
+    }
+
+    private func inferredBundleIdentifier(from appURL: URL) -> String? {
+        let infoPlistURL = appURL.appendingPathComponent("Contents/Info.plist")
+        guard let data = try? Data(contentsOf: infoPlistURL),
+              let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+              let bundleIdentifier = plist["CFBundleIdentifier"] as? String else {
+            return nil
+        }
+        return bundleIdentifier
+    }
+
+    private var preferredApplicationsDirectoryURL: URL? {
+        let fileManager = FileManager.default
+        let primaryURL = URL(fileURLWithPath: "/Applications", isDirectory: true)
+        if fileManager.fileExists(atPath: primaryURL.path) {
+            return primaryURL
+        }
+
+        let userApplicationsURL = fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent("Applications", isDirectory: true)
+        if fileManager.fileExists(atPath: userApplicationsURL.path) {
+            return userApplicationsURL
+        }
+
+        return nil
     }
 }

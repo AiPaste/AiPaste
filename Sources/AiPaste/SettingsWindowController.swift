@@ -381,7 +381,13 @@ private struct SettingsRootView: View {
                                     IgnoredApplicationRow(
                                         application: application,
                                         icon: privacyStore.appIcon(for: application),
-                                        isSelected: selectedIgnoredApplicationID == application.id
+                                        isSelected: selectedIgnoredApplicationID == application.id,
+                                        onRemove: {
+                                            privacyStore.removeIgnoredApplication(bundleIdentifier: application.bundleIdentifier)
+                                            if selectedIgnoredApplicationID == application.bundleIdentifier {
+                                                selectedIgnoredApplicationID = nil
+                                            }
+                                        }
                                     ) {
                                         selectedIgnoredApplicationID = application.id
                                     }
@@ -398,24 +404,41 @@ private struct SettingsRootView: View {
                                 .padding(.top, 8)
 
                             HStack(spacing: 8) {
-                                Menu {
-                                    if privacyStore.availableApplicationsToIgnore.isEmpty {
-                                        Button("No Running Apps Available") {}
-                                            .disabled(true)
-                                    } else {
-                                        ForEach(privacyStore.availableApplicationsToIgnore) { application in
-                                            Button(application.name) {
-                                                privacyStore.addIgnoredApplication(
-                                                    bundleIdentifier: application.bundleIdentifier,
-                                                    name: application.name
-                                                )
-                                                selectedIgnoredApplicationID = application.bundleIdentifier
-                                            }
-                                        }
+                                Button {
+                                    if let application = privacyStore.chooseAndAddIgnoredApplication() {
+                                        selectedIgnoredApplicationID = application.bundleIdentifier
                                     }
                                 } label: {
                                     Image(systemName: "plus")
                                         .font(.system(size: 11, weight: .semibold))
+                                        .frame(width: 24, height: 24)
+                                }
+                                .buttonStyle(.plain)
+
+                                Menu {
+                                    Button("Choose Application…") {
+                                        if let application = privacyStore.chooseAndAddIgnoredApplication() {
+                                            selectedIgnoredApplicationID = application.bundleIdentifier
+                                        }
+                                    }
+
+                                    if !privacyStore.availableApplicationsToIgnore.isEmpty {
+                                        Divider()
+
+                                        ForEach(privacyStore.availableApplicationsToIgnore) { application in
+                                            Button(application.name) {
+                                                if let ignoredApplication = privacyStore.addIgnoredApplication(
+                                                    bundleIdentifier: application.bundleIdentifier,
+                                                    name: application.name
+                                                ) {
+                                                    selectedIgnoredApplicationID = ignoredApplication.bundleIdentifier
+                                                }
+                                            }
+                                        }
+                                    }
+                                } label: {
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 10, weight: .bold))
                                         .frame(width: 24, height: 24)
                                 }
                                 .buttonStyle(.plain)
@@ -568,42 +591,54 @@ private struct IgnoredApplicationRow: View {
     let application: IgnoredApplication
     let icon: NSImage?
     let isSelected: Bool
+    let onRemove: () -> Void
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                if let icon {
-                    Image(nsImage: icon)
-                        .resizable()
-                        .interpolation(.high)
-                        .frame(width: 24, height: 24)
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                } else {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color.white.opacity(0.10))
-                        .frame(width: 24, height: 24)
-                        .overlay(
-                            Image(systemName: "app")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(Color.white.opacity(0.72))
-                        )
-                }
-
-                Text(application.name)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.92))
-
-                Spacer(minLength: 0)
+        HStack(spacing: 10) {
+            if let icon {
+                Image(nsImage: icon)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 24, height: 24)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            } else {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.white.opacity(0.10))
+                    .frame(width: 24, height: 24)
+                    .overlay(
+                        Image(systemName: "app")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(Color.white.opacity(0.72))
+                    )
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isSelected ? Color.white.opacity(0.08) : .clear)
-            )
+
+            Text(application.name)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.92))
+
+            Spacer(minLength: 0)
+
+            Button(action: onRemove) {
+                Image(systemName: "trash")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.70))
+                    .frame(width: 20, height: 20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(Color.white.opacity(0.06))
+                    )
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isSelected ? Color.white.opacity(0.08) : .clear)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture(perform: action)
     }
 }
 
