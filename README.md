@@ -87,3 +87,18 @@ To enable automatic paste-back into the previously active app, grant AiPaste Acc
 ```bash
 swift build
 ```
+
+## Release App
+
+Build a local `.app` bundle and release zip:
+
+```bash
+./scripts/build_release_app.sh 0.1.0
+```
+
+GitHub Actions workflow:
+
+- file: `.github/workflows/release-app.yml`
+- trigger: push a tag like `v0.1.0`
+- output: `dist/AiPaste.app` and `dist/AiPaste-<version>-macOS.zip`
+- release: automatically creates a GitHub Release on tag pushes and uploads the packaged zip

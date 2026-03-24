@@ -6,7 +6,7 @@ struct AiPasteApp: App {
     @ObservedObject private var appState = AppState.shared
 
     var body: some Scene {
-        MenuBarExtra("AiPaste", systemImage: "doc.on.clipboard.fill") {
+        MenuBarExtra {
             Button(appState.isPanelVisible ? "Hide Panel" : "Show Panel") {
                 appState.togglePanel()
             }
@@ -24,6 +24,9 @@ struct AiPasteApp: App {
             Button("Quit AiPaste") {
                 NSApplication.shared.terminate(nil)
             }
+        } label: {
+            Image(nsImage: MenuBarIconProvider.image)
+                .accessibilityLabel("AiPaste")
         }
         .menuBarExtraStyle(.menu)
 
