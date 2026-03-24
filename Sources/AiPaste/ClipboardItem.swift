@@ -6,6 +6,7 @@ enum ClipboardKind: String, Codable, Hashable {
     case text
     case code
     case link
+    case pdf
     case image
 }
 
@@ -24,6 +25,10 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
     var textContent: String?
     var imagePNGData: Data?
     var imageSize: PixelSize?
+    var pdfData: Data?
+    var pdfPreviewPNGData: Data?
+    var pdfPageCount: Int?
+    var pdfFileName: String?
     var groupID: String?
     var capturedAt: Date
     var bundleIdentifier: String?
@@ -45,6 +50,10 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         self.textContent = textContent
         self.imagePNGData = nil
         self.imageSize = nil
+        self.pdfData = nil
+        self.pdfPreviewPNGData = nil
+        self.pdfPageCount = nil
+        self.pdfFileName = nil
         self.groupID = groupID
         self.capturedAt = capturedAt
         self.bundleIdentifier = bundleIdentifier
@@ -67,6 +76,38 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         self.textContent = nil
         self.imagePNGData = imagePNGData
         self.imageSize = imageSize
+        self.pdfData = nil
+        self.pdfPreviewPNGData = nil
+        self.pdfPageCount = nil
+        self.pdfFileName = nil
+        self.groupID = groupID
+        self.capturedAt = capturedAt
+        self.bundleIdentifier = bundleIdentifier
+        self.appName = appName
+        self.isPinned = isPinned
+    }
+
+    init(
+        id: UUID = UUID(),
+        pdfData: Data,
+        pdfPreviewPNGData: Data?,
+        pdfPageCount: Int,
+        pdfFileName: String?,
+        groupID: String? = nil,
+        capturedAt: Date = .now,
+        bundleIdentifier: String?,
+        appName: String,
+        isPinned: Bool = false
+    ) {
+        self.id = id
+        self.kind = .pdf
+        self.textContent = nil
+        self.imagePNGData = nil
+        self.imageSize = nil
+        self.pdfData = pdfData
+        self.pdfPreviewPNGData = pdfPreviewPNGData
+        self.pdfPageCount = pdfPageCount
+        self.pdfFileName = pdfFileName
         self.groupID = groupID
         self.capturedAt = capturedAt
         self.bundleIdentifier = bundleIdentifier
@@ -82,6 +123,8 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
             return "Code"
         case .link:
             return "Link"
+        case .pdf:
+            return "PDF"
         case .image:
             return "Image"
         }
@@ -116,13 +159,21 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
             return "\(lineCount) lines"
         case .link:
             return linkHost ?? "Link"
+        case .pdf:
+            if let pdfPageCount {
+                return pdfPageCount == 1 ? "1 page" : "\(pdfPageCount) pages"
+            }
+            if let pdfFileName, !pdfFileName.isEmpty {
+                return pdfFileName
+            }
+            return "PDF"
         case .image:
             return imageSize?.label ?? "Image"
         }
     }
 
     var searchCorpus: String {
-        [cardTitle, appName, textPreview, linkHost ?? ""]
+        [cardTitle, appName, textPreview, linkHost ?? "", pdfFileName ?? ""]
             .filter { !$0.isEmpty }
             .joined(separator: " ")
     }
@@ -166,6 +217,11 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         return NSImage(data: imagePNGData)
     }
 
+    var pdfPreviewImage: NSImage? {
+        guard let pdfPreviewPNGData else { return nil }
+        return NSImage(data: pdfPreviewPNGData)
+    }
+
     func appIcon() -> NSImage? {
         guard let bundleIdentifier else { return nil }
         guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else {
@@ -182,6 +238,10 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
 
     func matchesImagePayload(_ data: Data, in groupID: String?) -> Bool {
         kind == .image && imagePNGData == data && self.groupID == groupID
+    }
+
+    func matchesPDFPayload(_ data: Data, in groupID: String?) -> Bool {
+        kind == .pdf && pdfData == data && self.groupID == groupID
     }
 
     static func detectKind(for text: String) -> ClipboardKind {

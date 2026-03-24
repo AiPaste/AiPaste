@@ -357,6 +357,9 @@ struct ContentView: View {
                 switch item.kind {
                 case .text, .code, .link:
                     return item.textPreview
+                case .pdf:
+                    let name = item.pdfFileName ?? "Document.pdf"
+                    return "[PDF \(name)]"
                 case .image:
                     return "[Image \(item.footerLabel)]"
                 }
@@ -530,6 +533,8 @@ private struct ClipboardCard: View {
             codeBody
         case .link:
             linkBody
+        case .pdf:
+            pdfBody
         case .image:
             imageBody
         }
@@ -692,6 +697,73 @@ private struct ClipboardCard: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 8)
                 .padding(.bottom, 12)
+        }
+        .background(Color(red: 0.08, green: 0.08, blue: 0.09))
+    }
+
+    private var pdfBody: some View {
+        VStack(spacing: 0) {
+            GeometryReader { proxy in
+                ZStack {
+                    CheckerboardBackground()
+
+                    if let previewImage = item.pdfPreviewImage {
+                        Image(nsImage: previewImage)
+                            .resizable()
+                            .interpolation(.high)
+                            .antialiased(true)
+                            .scaledToFit()
+                            .frame(
+                                width: proxy.size.width - 12,
+                                height: proxy.size.height - 12,
+                                alignment: .center
+                            )
+                            .padding(6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(Color.white)
+                            )
+                            .shadow(color: .black.opacity(0.20), radius: 10, y: 5)
+                    } else {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.white)
+                            .overlay {
+                                VStack(spacing: 10) {
+                                    Image(systemName: "doc.richtext.fill")
+                                        .font(.system(size: 34, weight: .semibold))
+                                        .foregroundStyle(Color(red: 0.85, green: 0.22, blue: 0.22))
+                                    Text("PDF")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundStyle(Color.black.opacity(0.72))
+                                }
+                            }
+                            .padding(6)
+                            .shadow(color: .black.opacity(0.20), radius: 10, y: 5)
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            VStack(spacing: 4) {
+                if let pdfFileName = item.pdfFileName, !pdfFileName.isEmpty {
+                    Text(pdfFileName)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(0.80))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .frame(maxWidth: .infinity)
+                }
+
+                Text(item.footerLabel)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.54))
+                    .frame(maxWidth: .infinity)
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 12)
+            .padding(.horizontal, 14)
         }
         .background(Color(red: 0.08, green: 0.08, blue: 0.09))
     }

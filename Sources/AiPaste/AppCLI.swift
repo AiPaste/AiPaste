@@ -152,9 +152,15 @@ private final class CLIRunner {
 
         for (index, item) in items.enumerated() {
             let groupName = store.group(for: item.groupID)?.title ?? "Clipboard"
-            let summary = item.kind == .image
-                ? (item.imageSize?.label ?? "Image")
-                : item.textPreview.replacingOccurrences(of: "\n", with: " ")
+            let summary: String
+            switch item.kind {
+            case .image:
+                summary = item.imageSize?.label ?? "Image"
+            case .pdf:
+                summary = item.pdfFileName ?? item.footerLabel
+            case .text, .code, .link:
+                summary = item.textPreview.replacingOccurrences(of: "\n", with: " ")
+            }
             printLine("[\(index + 1)] \(item.id.uuidString) \(item.cardTitle) \(groupName) \(summary)")
         }
     }
@@ -591,7 +597,14 @@ private struct ItemSummary: Encodable {
         bundleIdentifier = item.bundleIdentifier
         pinned = item.isPinned
         capturedAt = item.capturedAt
-        preview = item.kind == .image ? (item.imageSize?.label ?? "Image") : item.textPreview
+        switch item.kind {
+        case .image:
+            preview = item.imageSize?.label ?? "Image"
+        case .pdf:
+            preview = item.pdfFileName ?? item.footerLabel
+        case .text, .code, .link:
+            preview = item.textPreview
+        }
     }
 }
 

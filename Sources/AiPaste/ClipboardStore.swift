@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Foundation
+import PDFKit
 
 enum GroupColorToken: String, Codable, CaseIterable, Hashable {
     case red
@@ -203,6 +204,10 @@ final class ClipboardStore: ObservableObject {
             if let textContent = item.textContent {
                 pasteboard.setString(textContent, forType: .string)
             }
+        case .pdf:
+            if let pdfData = item.pdfData {
+                pasteboard.setData(pdfData, forType: .pdf)
+            }
         case .image:
             if let image = item.image {
                 pasteboard.writeObjects([image])
@@ -281,6 +286,21 @@ final class ClipboardStore: ObservableObject {
         let privacy = PrivacySettingsStore.shared
 
         if privacy.isIgnored(bundleIdentifier: bundleIdentifier) {
+            return
+        }
+
+        if let pdfPayload = currentPDFPayload() {
+            upsertPDFItem(
+                pdfPayload.data,
+                previewPNGData: pdfPayload.previewPNGData,
+                pageCount: pdfPayload.pageCount,
+                fileName: pdfPayload.fileName,
+                groupID: currentGroupID,
+                appName: appName,
+                bundleIdentifier: bundleIdentifier
+            )
+            SoundEffectPlayer.shared.play(.capture)
+            persist()
             return
         }
 
@@ -363,6 +383,67 @@ final class ClipboardStore: ObservableObject {
         trimIfNeeded()
     }
 
+    private func upsertPDFItem(
+        _ data: Data,
+        previewPNGData: Data?,
+        pageCount: Int,
+        fileName: String?,
+        groupID: String?,
+        appName: String,
+        bundleIdentifier: String?
+    ) {
+        if let existingIndex = items.firstIndex(where: { $0.matchesPDFPayload(data, in: groupID) }) {
+            var existing = items.remove(at: existingIndex)
+            existing.capturedAt = .now
+            existing.appName = appName
+            existing.bundleIdentifier = bundleIdentifier
+            existing.pdfPreviewPNGData = previewPNGData
+            existing.pdfPageCount = pageCount
+            existing.pdfFileName = fileName
+            items.insert(existing, at: 0)
+        } else {
+            items.insert(
+                ClipboardItem(
+                    pdfData: data,
+                    pdfPreviewPNGData: previewPNGData,
+                    pdfPageCount: pageCount,
+                    pdfFileName: fileName,
+                    groupID: groupID,
+                    capturedAt: .now,
+                    bundleIdentifier: bundleIdentifier,
+                    appName: appName
+                ),
+                at: 0
+            )
+        }
+        trimIfNeeded()
+    }
+
+    private func currentPDFPayload() -> (data: Data, previewPNGData: Data?, pageCount: Int, fileName: String?)? {
+        if let fileURL = currentPDFFileURL(),
+           let data = try? Data(contentsOf: fileURL),
+           let metadata = makePDFMetadata(from: data) {
+            return (
+                data: data,
+                previewPNGData: metadata.previewPNGData,
+                pageCount: metadata.pageCount,
+                fileName: fileURL.lastPathComponent
+            )
+        }
+
+        if let data = pasteboard.data(forType: .pdf),
+           let metadata = makePDFMetadata(from: data) {
+            return (
+                data: data,
+                previewPNGData: metadata.previewPNGData,
+                pageCount: metadata.pageCount,
+                fileName: nil
+            )
+        }
+
+        return nil
+    }
+
     private func currentImagePayload() -> (data: Data, size: PixelSize)? {
         guard let image = pasteboard.readObjects(forClasses: [NSImage.self])?.first as? NSImage else {
             return nil
@@ -370,6 +451,29 @@ final class ClipboardStore: ObservableObject {
         guard let pngData = image.pngData else { return nil }
         let size = PixelSize(width: Int(image.size.width), height: Int(image.size.height))
         return (pngData, size)
+    }
+
+    private func currentPDFFileURL() -> URL? {
+        let options: [NSPasteboard.ReadingOptionKey: Any] = [
+            .urlReadingFileURLsOnly: true
+        ]
+        let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: options) as? [URL]
+        return urls?.first(where: { $0.pathExtension.localizedCaseInsensitiveCompare("pdf") == .orderedSame })
+    }
+
+    private func makePDFMetadata(from data: Data) -> (previewPNGData: Data?, pageCount: Int)? {
+        guard let document = PDFDocument(data: data) else { return nil }
+        let pageCount = max(document.pageCount, 1)
+        let previewPNGData: Data?
+
+        if let firstPage = document.page(at: 0) {
+            let previewImage = firstPage.thumbnail(of: NSSize(width: 420, height: 300), for: .cropBox)
+            previewPNGData = previewImage.pngData
+        } else {
+            previewPNGData = nil
+        }
+
+        return (previewPNGData, pageCount)
     }
 
     private func trimIfNeeded() {
