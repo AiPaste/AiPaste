@@ -199,7 +199,7 @@ final class ClipboardStore: ObservableObject {
         pasteboard.clearContents()
 
         switch item.kind {
-        case .text, .link:
+        case .text, .code, .link:
             if let textContent = item.textContent {
                 pasteboard.setString(textContent, forType: .string)
             }
@@ -517,7 +517,7 @@ final class ClipboardStore: ObservableObject {
                 if merged[index].capturedAt < cloudItem.capturedAt {
                     merged[index] = cloudItem
                 }
-            } else if cloudItem.kind == .text {
+            } else if cloudItem.kind == .text || cloudItem.kind == .code || cloudItem.kind == .link {
                 merged.append(cloudItem)
             }
         }
@@ -533,7 +533,7 @@ final class ClipboardStore: ObservableObject {
 
     private func cloudSyncItems() -> [ClipboardItem] {
         items
-            .filter { $0.kind == .text || $0.kind == .link }
+            .filter { $0.kind == .text || $0.kind == .code || $0.kind == .link }
             .prefix(40)
             .map { item in
                 var syncedItem = item

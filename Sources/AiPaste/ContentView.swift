@@ -355,7 +355,7 @@ struct ContentView: View {
             .filter { $0.groupID == group.id }
             .map { item -> String in
                 switch item.kind {
-                case .text, .link:
+                case .text, .code, .link:
                     return item.textPreview
                 case .image:
                     return "[Image \(item.footerLabel)]"
@@ -526,6 +526,8 @@ private struct ClipboardCard: View {
         switch item.kind {
         case .text:
             textBody
+        case .code:
+            codeBody
         case .link:
             linkBody
         case .image:
@@ -615,6 +617,49 @@ private struct ClipboardCard: View {
         }
     }
 
+    private var codeBody: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "chevron.left.forwardslash.chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color(red: 0.44, green: 0.76, blue: 1.0))
+
+                Text(codeLanguageHint)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.84))
+                    .lineLimit(1)
+            }
+
+            Text(item.codePreview)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundStyle(Color.white.opacity(0.92))
+                .lineSpacing(2)
+                .multilineTextAlignment(.leading)
+                .lineLimit(7)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(red: 0.05, green: 0.07, blue: 0.11))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
+                        )
+                )
+
+            Text(item.footerLabel)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.54))
+                .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(red: 0.08, green: 0.08, blue: 0.09))
+    }
+
     private var imageBody: some View {
         VStack(spacing: 0) {
             GeometryReader { proxy in
@@ -686,6 +731,23 @@ private struct ClipboardCard: View {
     private var currentLinkPreview: LinkPreview? {
         guard privacyStore.generateLinkPreviews, let url = item.resolvedURL else { return nil }
         return linkPreviewStore.preview(for: url)
+    }
+
+    private var codeLanguageHint: String {
+        let text = item.textPreview.lowercased()
+        if text.contains("import swift") || text.contains("let ") || text.contains("var ") || text.contains("struct ") {
+            return "Swift"
+        }
+        if text.contains("function ") || text.contains("const ") || text.contains("=>") {
+            return "JavaScript"
+        }
+        if text.contains("def ") || text.contains("import ") || text.contains("print(") {
+            return "Python"
+        }
+        if text.contains("git ") || text.contains("brew ") || text.contains("swift run") || text.contains("npm ") {
+            return "Shell"
+        }
+        return "Code"
     }
 }
 

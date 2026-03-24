@@ -385,7 +385,7 @@ private final class CLIRunner {
         }
 
         let usesPlainText = (defaults.object(forKey: AppPreferences.alwaysPastePlainText) as? Bool ?? false)
-            && (item.kind == .text || item.kind == .link)
+            && (item.kind == .text || item.kind == .code || item.kind == .link)
         let flags: CGEventFlags = usesPlainText ? [.maskCommand, .maskAlternate, .maskShift] : .maskCommand
         let keyCode = CGKeyCode(kVK_ANSI_V)
 

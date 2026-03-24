@@ -4,6 +4,7 @@ import SwiftUI
 
 enum ClipboardKind: String, Codable, Hashable {
     case text
+    case code
     case link
     case image
 }
@@ -77,6 +78,8 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         switch kind {
         case .text:
             return "Text"
+        case .code:
+            return "Code"
         case .link:
             return "Link"
         case .image:
@@ -109,6 +112,8 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         switch kind {
         case .text:
             return "\(characterCount) characters"
+        case .code:
+            return "\(lineCount) lines"
         case .link:
             return linkHost ?? "Link"
         case .image:
@@ -135,6 +140,23 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         resolvedURL?.absoluteString ?? textPreview
     }
 
+    var lineCount: Int {
+        max(textPreview.split(whereSeparator: \.isNewline).count, textPreview.isEmpty ? 0 : 1)
+    }
+
+    var codePreview: String {
+        let trimmed = textPreview.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("```"), trimmed.hasSuffix("```") else { return textPreview }
+
+        var lines = trimmed.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        guard !lines.isEmpty else { return textPreview }
+        lines.removeFirst()
+        if !lines.isEmpty, lines.last?.trimmingCharacters(in: .whitespacesAndNewlines) == "```" {
+            lines.removeLast()
+        }
+        return lines.joined(separator: "\n")
+    }
+
     var sourceStyle: SourceStyle {
         SourceStyle.resolve(bundleIdentifier: bundleIdentifier, appName: appName)
     }
@@ -155,7 +177,7 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
     }
 
     func matchesStringPayload(_ text: String, in groupID: String?) -> Bool {
-        (kind == .text || kind == .link) && textContent == text && self.groupID == groupID
+        (kind == .text || kind == .code || kind == .link) && textContent == text && self.groupID == groupID
     }
 
     func matchesImagePayload(_ data: Data, in groupID: String?) -> Bool {
@@ -163,7 +185,42 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
     }
 
     static func detectKind(for text: String) -> ClipboardKind {
-        URL.normalizedClipboardURL(from: text) != nil ? .link : .text
+        if URL.normalizedClipboardURL(from: text) != nil {
+            return .link
+        }
+
+        return isLikelyCode(text) ? .code : .text
+    }
+
+    private static func isLikelyCode(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+
+        if trimmed.hasPrefix("```") && trimmed.hasSuffix("```") {
+            return true
+        }
+
+        if trimmed.range(of: #"^(?:\$|#|>)?\s*(git|swift|npm|pnpm|yarn|bun|python|python3|node|cargo|go|docker|kubectl|brew|curl|ssh|cd|ls|cp|mv|rm|mkdir|touch)\b"#, options: [.regularExpression, .caseInsensitive]) != nil {
+            return true
+        }
+
+        let lines = trimmed.split(whereSeparator: \.isNewline)
+        let hasMultipleLines = lines.count >= 2
+        let indentedLines = lines.filter { $0.hasPrefix("    ") || $0.hasPrefix("\t") }.count
+        let keywordMatches = [
+            #"\b(func|class|struct|enum|protocol|extension|let|var|const|import|from|def|return|async|await|if|else|for|while|switch|case|guard|SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER)\b"#,
+            #"[{};<>]|=>|->|::|</|/>"#,
+        ].filter { trimmed.range(of: $0, options: [.regularExpression, .caseInsensitive]) != nil }.count
+
+        if hasMultipleLines && (keywordMatches >= 1 || indentedLines >= 1) {
+            return true
+        }
+
+        if keywordMatches >= 2 {
+            return true
+        }
+
+        return false
     }
 }
 
