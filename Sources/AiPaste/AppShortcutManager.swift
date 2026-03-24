@@ -16,6 +16,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
     case previousGroup
     case nextGroup
     case pasteSelectedItem
+    case deleteSelectedItem
     case hidePanel
 
     var id: String { rawValue }
@@ -38,6 +39,8 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
             return "Next Group"
         case .pasteSelectedItem:
             return "Paste Selected Item"
+        case .deleteSelectedItem:
+            return "Delete Selected Item"
         case .hidePanel:
             return "Hide Panel"
         }
@@ -49,7 +52,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
             return "Global"
         case .focusSearch, .previousItem, .nextItem, .previousGroup, .nextGroup:
             return "Panel Navigation"
-        case .pasteSelectedItem, .hidePanel:
+        case .pasteSelectedItem, .deleteSelectedItem, .hidePanel:
             return "Panel Actions"
         }
     }
@@ -72,6 +75,8 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
             return ShortcutDescriptor(keyCode: UInt16(kVK_DownArrow), modifiers: [])
         case .pasteSelectedItem:
             return ShortcutDescriptor(keyCode: UInt16(kVK_Return), modifiers: [])
+        case .deleteSelectedItem:
+            return ShortcutDescriptor(keyCode: UInt16(kVK_Delete), modifiers: [])
         case .hidePanel:
             return ShortcutDescriptor(keyCode: UInt16(kVK_Escape), modifiers: [])
         }

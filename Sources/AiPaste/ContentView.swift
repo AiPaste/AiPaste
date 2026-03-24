@@ -557,11 +557,26 @@ private struct ClipboardCard: View {
 
     private var linkBody: some View {
         VStack(alignment: .leading, spacing: 12) {
+            if let preview = currentLinkPreview {
+                LinkPreviewBanner(
+                    preview: preview,
+                    host: item.linkHost ?? "Link"
+                )
+            }
+
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
-                    Image(systemName: "link")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color(red: 0.39, green: 0.74, blue: 1.0))
+                    if let iconImage = currentLinkPreview?.iconImage {
+                        Image(nsImage: iconImage)
+                            .resizable()
+                            .interpolation(.high)
+                            .frame(width: 14, height: 14)
+                            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    } else {
+                        Image(systemName: "link")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color(red: 0.39, green: 0.74, blue: 1.0))
+                    }
 
                     Text(item.linkHost ?? "Link")
                         .font(.system(size: 12, weight: .semibold))
@@ -666,6 +681,88 @@ private struct ClipboardCard: View {
         }
 
         return previewTitle
+    }
+
+    private var currentLinkPreview: LinkPreview? {
+        guard privacyStore.generateLinkPreviews, let url = item.resolvedURL else { return nil }
+        return linkPreviewStore.preview(for: url)
+    }
+}
+
+private struct LinkPreviewBanner: View {
+    let preview: LinkPreview
+    let host: String
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.08),
+                            Color.white.opacity(0.03)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            if let image = preview.image {
+                Image(nsImage: image)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                    .overlay(
+                        LinearGradient(
+                            colors: [
+                                Color.clear,
+                                Color.black.opacity(0.48)
+                            ],
+                            startPoint: .center,
+                            endPoint: .bottom
+                        )
+                    )
+            } else {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.13, green: 0.17, blue: 0.23),
+                        Color(red: 0.09, green: 0.11, blue: 0.16)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+
+            HStack(spacing: 8) {
+                if let iconImage = preview.iconImage {
+                    Image(nsImage: iconImage)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 18, height: 18)
+                        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                } else {
+                    Image(systemName: "link")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(0.88))
+                        .frame(width: 18, height: 18)
+                }
+
+                Text(host)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.92))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+        }
+        .frame(height: 74)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+        )
     }
 }
 

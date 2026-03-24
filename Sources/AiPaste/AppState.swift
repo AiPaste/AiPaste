@@ -40,6 +40,9 @@ final class AppState: ObservableObject {
         onConfirmSelection: { [weak self] in
             self?.pasteSelectedItem()
         },
+        onDeleteSelection: { [weak self] in
+            self?.deleteSelectedItem()
+        },
         onOpenSettings: { [weak self] in
             self?.openSettings(hidePanel: true)
         }
@@ -212,6 +215,28 @@ final class AppState: ObservableObject {
         let item = visibleItems.first(where: { $0.id == selectedItemID }) ?? visibleItems[0]
         logger.debug("pasteSelectedItem resolved item \(item.id.uuidString, privacy: .public), selectedItemID=\(self.selectedItemID?.uuidString ?? "nil", privacy: .public), visibleCount=\(visibleItems.count, privacy: .public)")
         paste(item)
+    }
+
+    func deleteSelectedItem() {
+        let visibleItems = store.visibleItems
+        guard !visibleItems.isEmpty else {
+            logger.error("deleteSelectedItem aborted: no visible items")
+            return
+        }
+
+        let currentIndex = visibleItems.firstIndex(where: { $0.id == selectedItemID }) ?? 0
+        let item = visibleItems[currentIndex]
+        logger.debug("deleteSelectedItem resolved item \(item.id.uuidString, privacy: .public)")
+        store.remove(item)
+
+        let updatedVisibleItems = store.visibleItems
+        guard !updatedVisibleItems.isEmpty else {
+            selectedItemID = nil
+            return
+        }
+
+        let nextIndex = max(min(currentIndex - 1, updatedVisibleItems.count - 1), 0)
+        selectedItemID = updatedVisibleItems[nextIndex].id
     }
 
     func syncSelectionToVisibleItems(preferFirst: Bool = false) {

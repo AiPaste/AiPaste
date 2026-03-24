@@ -16,6 +16,7 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
     private let onVisibilityChange: (Bool) -> Void
     private let onNavigationCommand: (ClipboardPanelNavigationCommand) -> Void
     private let onConfirmSelection: () -> Void
+    private let onDeleteSelection: () -> Void
     private let onOpenSettings: () -> Void
     private var panel: ClipboardPanel?
     private var didInstallObservers = false
@@ -31,12 +32,14 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
         onVisibilityChange: @escaping (Bool) -> Void,
         onNavigationCommand: @escaping (ClipboardPanelNavigationCommand) -> Void,
         onConfirmSelection: @escaping () -> Void,
+        onDeleteSelection: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void
     ) {
         self.store = store
         self.onVisibilityChange = onVisibilityChange
         self.onNavigationCommand = onNavigationCommand
         self.onConfirmSelection = onConfirmSelection
+        self.onDeleteSelection = onDeleteSelection
         self.onOpenSettings = onOpenSettings
     }
 
@@ -225,6 +228,12 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
             onConfirmOrEscape(.confirm)
             return true
         }
+        if shortcutManager.matches(event, action: .deleteSelectedItem) {
+            guard !isTextInputEditing else { return false }
+            logger.debug("matched shortcut action deleteSelectedItem")
+            onDeleteSelection()
+            return true
+        }
         if shortcutManager.matches(event, action: .previousItem) {
             logger.debug("matched shortcut action previousItem")
             onNavigationCommand(.left)
@@ -246,6 +255,11 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
             return true
         }
         return false
+    }
+
+    private var isTextInputEditing: Bool {
+        guard let panel else { return false }
+        return panel.firstResponder is NSTextView
     }
 
     private func targetFrame() -> NSRect? {
