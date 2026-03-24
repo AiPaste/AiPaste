@@ -60,6 +60,7 @@ private struct SettingsRootView: View {
     @ObservedObject private var shortcutManager = AppShortcutManager.shared
     @ObservedObject private var store = AppState.shared.store
     @ObservedObject private var privacyStore = PrivacySettingsStore.shared
+    @ObservedObject private var updateManager = AppUpdateManager.shared
     @StateObject private var shortcutRecorder = ShortcutRecordingController()
     @State private var selectedPane: SettingsPane = .general
     @State private var selectedIgnoredApplicationID: String?
@@ -163,6 +164,14 @@ private struct SettingsRootView: View {
                             )
                         )
                         SettingsToggleRow(
+                            title: "Automatic updates",
+                            trailingText: updateManager.availableVersion.map { "v\($0) available" },
+                            isOn: Binding(
+                                get: { updateManager.automaticUpdatesEnabled },
+                                set: { updateManager.setAutomaticUpdates($0) }
+                            )
+                        )
+                        SettingsToggleRow(
                             title: "iCloud sync",
                             trailingText: iCloudStatusText,
                             isOn: Binding(
@@ -171,6 +180,30 @@ private struct SettingsRootView: View {
                             )
                         )
                         SettingsToggleRow(title: "Sound effects", isOn: $soundEffects, showsDivider: false)
+                    }
+                }
+
+                SettingsCard {
+                    HStack(alignment: .center, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Software Update")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Color.white.opacity(0.92))
+
+                            Text(updateManager.updateStatusMessage)
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(Color.white.opacity(0.62))
+                        }
+
+                        Spacer(minLength: 0)
+
+                        Button(updateManager.isChecking ? "Checking…" : "Check Now") {
+                            Task {
+                                await updateManager.checkForUpdates(userInitiated: true)
+                            }
+                        }
+                        .buttonStyle(SettingsSecondaryButtonStyle())
+                        .disabled(updateManager.isChecking)
                     }
                 }
 

@@ -82,6 +82,8 @@ To enable automatic paste-back into the previously active app, grant AiPaste Acc
 
 `Sound effects` now plays real system sounds for clipboard capture, successful paste-to-app actions, and permission or system-operation failures.
 
+`Automatic updates` checks the latest GitHub release for AiPaste in the background. When a newer version is available, the app shows a native prompt and can open the packaged release download directly.
+
 ## Build
 
 ```bash

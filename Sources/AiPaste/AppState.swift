@@ -16,6 +16,7 @@ final class AppState: ObservableObject {
 
     let store = ClipboardStore()
     let shortcutManager = AppShortcutManager.shared
+    let updateManager = AppUpdateManager.shared
     @Published private(set) var isPanelVisible = false
     @Published private(set) var pasteAutomationAvailable = AXIsProcessTrusted()
     @Published var openAtLoginEnabled = false
@@ -69,6 +70,7 @@ final class AppState: ObservableObject {
         refreshOpenAtLoginStatus()
         runInBackgroundEnabled = UserDefaults.standard.object(forKey: AppPreferences.runInBackground) as? Bool ?? true
         registerGlobalShortcuts()
+        updateManager.configureOnLaunch()
     }
 
     func togglePanel() {
@@ -360,6 +362,7 @@ final class AppState: ObservableObject {
         runInBackgroundEnabled = defaults.object(forKey: AppPreferences.runInBackground) as? Bool ?? true
         refreshOpenAtLoginStatus()
         PrivacySettingsStore.shared.reloadFromDefaults()
+        updateManager.reloadFromDefaults()
 
         let iCloudEnabled = defaults.object(forKey: AppPreferences.iCloudSync) as? Bool ?? true
         if store.iCloudSyncEnabled != iCloudEnabled {

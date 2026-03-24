@@ -417,6 +417,8 @@ private final class CLIRunner {
             return (status == .enabled || status == .requiresApproval) ? "true" : "false"
         case .runInBackground:
             return boolString(defaults.object(forKey: AppPreferences.runInBackground) as? Bool ?? true)
+        case .automaticUpdates:
+            return boolString(AppUpdateManager.shared.automaticUpdatesEnabled)
         case .iCloudSync:
             return boolString(store.iCloudSyncEnabled)
         case .soundEffects:
@@ -454,6 +456,8 @@ private final class CLIRunner {
             }
         case .runInBackground:
             defaults.set(try parseBool(value), forKey: AppPreferences.runInBackground)
+        case .automaticUpdates:
+            AppUpdateManager.shared.setAutomaticUpdates(try parseBool(value))
         case .iCloudSync:
             store.setICloudSync(try parseBool(value))
         case .soundEffects:
@@ -594,6 +598,7 @@ private struct ItemSummary: Encodable {
 private enum ConfigurationKey: String, CaseIterable {
     case openAtLogin = "open-at-login"
     case runInBackground = "run-in-background"
+    case automaticUpdates = "automatic-updates"
     case iCloudSync = "icloud-sync"
     case soundEffects = "sound-effects"
     case showDuringScreenSharing = "show-during-screen-sharing"

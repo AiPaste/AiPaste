@@ -19,6 +19,12 @@ struct AiPasteApp: App {
                 appState.captureClipboard()
             }
 
+            Button("Check for Updates…") {
+                Task {
+                    await appState.updateManager.checkForUpdates(userInitiated: true)
+                }
+            }
+
             Divider()
 
             Button("Quit AiPaste") {
