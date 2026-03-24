@@ -84,6 +84,9 @@ struct ContentView: View {
         .onAppear {
             appState.syncSelectionToVisibleItems(preferFirst: true)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .aiPasteFocusSearch)) { _ in
+            focusSearchField()
+        }
         .onChange(of: store.selectedSourceID) { _, _ in
             appState.syncSelectionToVisibleItems(preferFirst: true)
         }
@@ -182,12 +185,7 @@ struct ContentView: View {
                 .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
         } else {
             Button {
-                withAnimation(.easeOut(duration: 0.18)) {
-                    isSearchExpanded = true
-                }
-                DispatchQueue.main.async {
-                    isSearchFocused = true
-                }
+                focusSearchField()
             } label: {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 15, weight: .medium))
@@ -248,6 +246,15 @@ struct ContentView: View {
             }
         }
         .animation(.easeOut(duration: 0.18), value: isSearchExpanded)
+    }
+
+    private func focusSearchField() {
+        withAnimation(.easeOut(duration: 0.18)) {
+            isSearchExpanded = true
+        }
+        DispatchQueue.main.async {
+            isSearchFocused = true
+        }
     }
 
     private var cardsStrip: some View {

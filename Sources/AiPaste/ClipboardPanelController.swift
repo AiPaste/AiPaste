@@ -205,6 +205,11 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
             onOpenSettings()
             return true
         }
+        if shortcutManager.matches(event, action: .focusSearch) {
+            logger.debug("matched shortcut action focusSearch")
+            NotificationCenter.default.post(name: .aiPasteFocusSearch, object: nil)
+            return true
+        }
         if shortcutManager.matches(event, action: .hidePanel) {
             logger.debug("matched shortcut action hidePanel")
             onConfirmOrEscape(.escape)

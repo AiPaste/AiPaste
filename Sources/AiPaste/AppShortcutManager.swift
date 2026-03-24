@@ -4,11 +4,13 @@ import Foundation
 
 extension Notification.Name {
     static let aiPasteShortcutsDidChange = Notification.Name("AiPasteShortcutsDidChange")
+    static let aiPasteFocusSearch = Notification.Name("AiPasteFocusSearch")
 }
 
 enum ShortcutAction: String, CaseIterable, Identifiable {
     case showPanel
     case openSettings
+    case focusSearch
     case previousItem
     case nextItem
     case previousGroup
@@ -24,6 +26,8 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
             return "Show Panel"
         case .openSettings:
             return "Open Settings"
+        case .focusSearch:
+            return "Focus Search"
         case .previousItem:
             return "Select Previous Item"
         case .nextItem:
@@ -43,7 +47,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
         switch self {
         case .showPanel, .openSettings:
             return "Global"
-        case .previousItem, .nextItem, .previousGroup, .nextGroup:
+        case .focusSearch, .previousItem, .nextItem, .previousGroup, .nextGroup:
             return "Panel Navigation"
         case .pasteSelectedItem, .hidePanel:
             return "Panel Actions"
@@ -56,6 +60,8 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
             return ShortcutDescriptor(keyCode: UInt16(kVK_ANSI_V), modifiers: [.command, .shift])
         case .openSettings:
             return ShortcutDescriptor(keyCode: UInt16(kVK_ANSI_Comma), modifiers: [.command])
+        case .focusSearch:
+            return ShortcutDescriptor(keyCode: UInt16(kVK_ANSI_F), modifiers: [.command])
         case .previousItem:
             return ShortcutDescriptor(keyCode: UInt16(kVK_LeftArrow), modifiers: [])
         case .nextItem:
