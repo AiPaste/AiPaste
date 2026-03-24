@@ -84,11 +84,11 @@ struct ShortcutDescriptor: Codable, Hashable {
 
     init(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) {
         self.keyCode = keyCode
-        self.modifiersRawValue = modifiers.intersection(.deviceIndependentFlagsMask).rawValue
+        self.modifiersRawValue = Self.normalizedModifiers(modifiers).rawValue
     }
 
     var modifiers: NSEvent.ModifierFlags {
-        NSEvent.ModifierFlags(rawValue: modifiersRawValue).intersection(.deviceIndependentFlagsMask)
+        Self.normalizedModifiers(NSEvent.ModifierFlags(rawValue: modifiersRawValue))
     }
 
     var displayTokens: [String] {
@@ -122,8 +122,12 @@ struct ShortcutDescriptor: Codable, Hashable {
         guard !modifierKeyCodes.contains(event.keyCode) else { return nil }
         return ShortcutDescriptor(
             keyCode: event.keyCode,
-            modifiers: event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            modifiers: normalizedModifiers(event.modifierFlags)
         )
+    }
+
+    static func normalizedModifiers(_ modifiers: NSEvent.ModifierFlags) -> NSEvent.ModifierFlags {
+        modifiers.intersection([.command, .shift, .option, .control])
     }
 }
 
@@ -232,7 +236,7 @@ final class AppShortcutManager: ObservableObject {
 
     func matches(_ event: NSEvent, action: ShortcutAction) -> Bool {
         let shortcut = shortcut(for: action)
-        let eventModifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let eventModifiers = ShortcutDescriptor.normalizedModifiers(event.modifierFlags)
         return shortcut.keyCode == event.keyCode && shortcut.modifiers == eventModifiers
     }
 

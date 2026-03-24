@@ -94,6 +94,11 @@ private struct SettingsRootView: View {
 
             Spacer(minLength: 0)
 
+            Text(versionLabel)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.46))
+                .padding(.bottom, 2)
+
             Button {
                 if let url = URL(string: "https://support.apple.com") {
                     NSWorkspace.shared.open(url)
@@ -510,6 +515,22 @@ private struct SettingsRootView: View {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
         return formatter.localizedString(for: lastSyncDate, relativeTo: .now)
+    }
+
+    private var versionLabel: String {
+        let shortVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        let buildVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+
+        if let shortVersion, !shortVersion.isEmpty,
+           let buildVersion, !buildVersion.isEmpty, buildVersion != shortVersion {
+            return "Version \(shortVersion) (\(buildVersion))"
+        }
+
+        if let shortVersion, !shortVersion.isEmpty {
+            return "Version \(shortVersion)"
+        }
+
+        return "Version Development"
     }
 }
 
