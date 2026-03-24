@@ -97,6 +97,7 @@ final class AppState: ObservableObject {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + (hidePanel ? 0.12 : 0.0)) {
             SettingsWindowController.shared.present()
+            self.applyWindowPrivacySettings()
         }
     }
 
@@ -330,6 +331,12 @@ final class AppState: ObservableObject {
         DispatchQueue.main.async {
             NSApplication.shared.terminate(nil)
         }
+    }
+
+    func applyWindowPrivacySettings() {
+        let allowScreenSharing = PrivacySettingsStore.shared.showDuringScreenSharing
+        SettingsWindowController.shared.setScreenSharingVisibilityAllowed(allowScreenSharing)
+        panelController.setScreenSharingVisibilityAllowed(allowScreenSharing)
     }
 
     private func refreshOpenAtLoginStatus() {

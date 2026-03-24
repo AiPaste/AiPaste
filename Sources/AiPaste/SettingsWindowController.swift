@@ -27,6 +27,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.titlebarAppearsTransparent = true
         window.isOpaque = false
         window.backgroundColor = NSColor(calibratedWhite: 0.14, alpha: 1)
+        window.sharingType = PrivacySettingsStore.shared.showDuringScreenSharing ? .readOnly : .none
         window.toolbarStyle = .unifiedCompact
         window.contentView = hostingView
 
@@ -45,6 +46,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
     }
 
+    func setScreenSharingVisibilityAllowed(_ allowed: Bool) {
+        window?.sharingType = allowed ? .readOnly : .none
+    }
+
     func windowWillClose(_ notification: Notification) {
         AppState.shared.evaluateBackgroundPolicy()
     }
@@ -54,8 +59,10 @@ private struct SettingsRootView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var shortcutManager = AppShortcutManager.shared
     @ObservedObject private var store = AppState.shared.store
+    @ObservedObject private var privacyStore = PrivacySettingsStore.shared
     @StateObject private var shortcutRecorder = ShortcutRecordingController()
     @State private var selectedPane: SettingsPane = .general
+    @State private var selectedIgnoredApplicationID: String?
     @AppStorage(AppPreferences.soundEffects) private var soundEffects = true
     @AppStorage(AppPreferences.pasteDestination) private var pasteDestinationRaw = PasteDestinationMode.activeApp.rawValue
     @AppStorage(AppPreferences.alwaysPastePlainText) private var alwaysPastePlainText = false
@@ -116,10 +123,7 @@ private struct SettingsRootView: View {
         case .general:
             generalPane
         case .privacy:
-            placeholderPane(
-                title: "Privacy",
-                message: "Accessibility and clipboard permissions are managed by macOS System Settings."
-            )
+            privacyPane
         case .shortcuts:
             shortcutsPane
         case .subscription:
@@ -304,6 +308,144 @@ private struct SettingsRootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
+    private var privacyPane: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Privacy")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color.white.opacity(0.96))
+
+                SettingsCard {
+                    VStack(spacing: 0) {
+                        PrivacyToggleRow(
+                            title: "Show during screen sharing",
+                            subtitle: "Allow Paste windows to appear to others when you share your screen.",
+                            isOn: Binding(
+                                get: { privacyStore.showDuringScreenSharing },
+                                set: { privacyStore.setShowDuringScreenSharing($0) }
+                            )
+                        )
+                        PrivacyToggleRow(
+                            title: "Generate link previews",
+                            subtitle: "Download page metadata for links so cards can show richer previews.",
+                            isOn: Binding(
+                                get: { privacyStore.generateLinkPreviews },
+                                set: { privacyStore.setGenerateLinkPreviews($0) }
+                            ),
+                            showsDivider: false
+                        )
+                    }
+                }
+
+                SettingsCard {
+                    VStack(spacing: 0) {
+                        PrivacyToggleRow(
+                            title: "Ignore confidential content",
+                            subtitle: "Skip saving likely passwords, tokens, secrets, and private keys when detected.",
+                            isOn: Binding(
+                                get: { privacyStore.ignoreConfidentialContent },
+                                set: { privacyStore.setIgnoreConfidentialContent($0) }
+                            )
+                        )
+                        PrivacyToggleRow(
+                            title: "Ignore transient content",
+                            subtitle: "Skip one-time codes, verification codes, and other temporary copied values.",
+                            isOn: Binding(
+                                get: { privacyStore.ignoreTransientContent },
+                                set: { privacyStore.setIgnoreTransientContent($0) }
+                            ),
+                            showsDivider: false
+                        )
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Ignore Applications")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Color.white.opacity(0.96))
+
+                    Text("Do not save content copied from the applications below.")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.72))
+
+                    SettingsCard {
+                        VStack(spacing: 0) {
+                            if privacyStore.ignoredApplications.isEmpty {
+                                Text("No ignored applications yet.")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(Color.white.opacity(0.56))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.vertical, 12)
+                            } else {
+                                ForEach(Array(privacyStore.ignoredApplications.enumerated()), id: \.element.id) { index, application in
+                                    IgnoredApplicationRow(
+                                        application: application,
+                                        icon: privacyStore.appIcon(for: application),
+                                        isSelected: selectedIgnoredApplicationID == application.id
+                                    ) {
+                                        selectedIgnoredApplicationID = application.id
+                                    }
+
+                                    if index < privacyStore.ignoredApplications.count - 1 {
+                                        Divider()
+                                            .overlay(Color.white.opacity(0.08))
+                                    }
+                                }
+                            }
+
+                            Divider()
+                                .overlay(Color.white.opacity(0.08))
+                                .padding(.top, 8)
+
+                            HStack(spacing: 8) {
+                                Menu {
+                                    if privacyStore.availableApplicationsToIgnore.isEmpty {
+                                        Button("No Running Apps Available") {}
+                                            .disabled(true)
+                                    } else {
+                                        ForEach(privacyStore.availableApplicationsToIgnore) { application in
+                                            Button(application.name) {
+                                                privacyStore.addIgnoredApplication(
+                                                    bundleIdentifier: application.bundleIdentifier,
+                                                    name: application.name
+                                                )
+                                                selectedIgnoredApplicationID = application.bundleIdentifier
+                                            }
+                                        }
+                                    }
+                                } label: {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .frame(width: 24, height: 24)
+                                }
+                                .buttonStyle(.plain)
+
+                                Button {
+                                    if let selectedIgnoredApplicationID {
+                                        privacyStore.removeIgnoredApplication(bundleIdentifier: selectedIgnoredApplicationID)
+                                        self.selectedIgnoredApplicationID = nil
+                                    }
+                                } label: {
+                                    Image(systemName: "minus")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .frame(width: 24, height: 24)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(selectedIgnoredApplicationID == nil)
+                            }
+                            .foregroundStyle(Color.white.opacity(0.84))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 8)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
     private func placeholderPane(title: String, message: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
@@ -380,6 +522,85 @@ private struct SettingsSidebarItem: View {
                         )
                         : LinearGradient(colors: [.clear, .clear], startPoint: .leading, endPoint: .trailing)
                     )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct PrivacyToggleRow: View {
+    let title: String
+    let subtitle: String
+    @Binding var isOn: Bool
+    var showsDivider = true
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(0.92))
+                    Text(subtitle)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.62))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                Toggle("", isOn: $isOn)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .controlSize(.regular)
+            }
+            .padding(.vertical, 10)
+
+            if showsDivider {
+                Divider()
+                    .overlay(Color.white.opacity(0.08))
+            }
+        }
+    }
+}
+
+private struct IgnoredApplicationRow: View {
+    let application: IgnoredApplication
+    let icon: NSImage?
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                if let icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 24, height: 24)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                } else {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.white.opacity(0.10))
+                        .frame(width: 24, height: 24)
+                        .overlay(
+                            Image(systemName: "app")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(Color.white.opacity(0.72))
+                        )
+                }
+
+                Text(application.name)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.92))
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(isSelected ? Color.white.opacity(0.08) : .clear)
             )
         }
         .buttonStyle(.plain)

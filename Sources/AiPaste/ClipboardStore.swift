@@ -267,6 +267,11 @@ final class ClipboardStore: ObservableObject {
         let appName = app?.localizedName ?? "Clipboard"
         let bundleIdentifier = app?.bundleIdentifier
         let currentGroupID = groups.contains(where: { $0.id == selectedSourceID }) ? selectedSourceID : nil
+        let privacy = PrivacySettingsStore.shared
+
+        if privacy.isIgnored(bundleIdentifier: bundleIdentifier) {
+            return
+        }
 
         if let imagePayload = currentImagePayload() {
             upsertImageItem(
@@ -284,6 +289,9 @@ final class ClipboardStore: ObservableObject {
         guard let rawString = pasteboard.string(forType: .string) else { return }
         let normalized = rawString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalized.isEmpty else { return }
+        if shouldIgnoreTextCapture(normalized, privacy: privacy) {
+            return
+        }
         upsertTextItem(
             normalized,
             groupID: currentGroupID,
@@ -357,6 +365,53 @@ final class ClipboardStore: ObservableObject {
         if items.count > maxItems {
             items = Array(items.prefix(maxItems))
         }
+    }
+
+    private func shouldIgnoreTextCapture(_ text: String, privacy: PrivacySettingsStore) -> Bool {
+        if privacy.ignoreTransientContent, isTransientContent(text) {
+            return true
+        }
+        if privacy.ignoreConfidentialContent, isConfidentialContent(text) {
+            return true
+        }
+        return false
+    }
+
+    private func isTransientContent(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.range(of: #"^\d{4,8}$"#, options: .regularExpression) != nil {
+            return true
+        }
+
+        let lowercase = trimmed.lowercased()
+        let transientSignals = [
+            "one-time code", "verification code", "otp", "2fa", "two-factor",
+            "temporary code", "expires in", "valid for", "auth code"
+        ]
+        return transientSignals.contains { lowercase.contains($0) }
+    }
+
+    private func isConfidentialContent(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowercase = trimmed.lowercased()
+
+        let keywordSignals = [
+            "password", "passcode", "secret", "api_key", "apikey", "private key",
+            "access token", "refresh token", "bearer ", "session token"
+        ]
+
+        if keywordSignals.contains(where: { lowercase.contains($0) }) {
+            return true
+        }
+
+        let regexes = [
+            #"(?i)sk-[a-z0-9]{20,}"#,
+            #"(?i)ghp_[a-z0-9]{20,}"#,
+            #"eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+"#,
+            #"-----BEGIN [A-Z ]+PRIVATE KEY-----"#
+        ]
+
+        return regexes.contains { trimmed.range(of: $0, options: .regularExpression) != nil }
     }
 
     private func load() {

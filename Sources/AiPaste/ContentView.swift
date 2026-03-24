@@ -386,6 +386,8 @@ struct ContentView: View {
 private struct ClipboardCard: View {
     @ObservedObject private var appState = AppState.shared
     @EnvironmentObject private var store: ClipboardStore
+    @ObservedObject private var privacyStore = PrivacySettingsStore.shared
+    @ObservedObject private var linkPreviewStore = LinkPreviewStore.shared
     let item: ClipboardItem
 
     var body: some View {
@@ -567,12 +569,17 @@ private struct ClipboardCard: View {
                         .lineLimit(1)
                 }
 
+                Text(linkPrimaryText)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.92))
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
                 Text(item.linkDisplayText)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Color.white.opacity(0.74))
                     .lineSpacing(2)
-                    .textSelection(.enabled)
-                    .lineLimit(5)
+                    .lineLimit(3)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
 
@@ -586,6 +593,11 @@ private struct ClipboardCard: View {
         .padding(.bottom, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.08, green: 0.08, blue: 0.09))
+        .onAppear {
+            if privacyStore.generateLinkPreviews, let url = item.resolvedURL {
+                linkPreviewStore.fetchIfNeeded(for: url)
+            }
+        }
     }
 
     private var imageBody: some View {
@@ -658,6 +670,17 @@ private struct ClipboardCard: View {
             return lastCopiedItemID == item.id
         }
         return false
+    }
+
+    private var linkPrimaryText: String {
+        guard privacyStore.generateLinkPreviews,
+              let url = item.resolvedURL,
+              let previewTitle = linkPreviewStore.preview(for: url)?.title,
+              !previewTitle.isEmpty else {
+            return item.linkHost ?? "Link"
+        }
+
+        return previewTitle
     }
 }
 

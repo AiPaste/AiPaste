@@ -110,6 +110,10 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
         }
     }
 
+    func setScreenSharingVisibilityAllowed(_ allowed: Bool) {
+        panel?.sharingType = allowed ? .readOnly : .none
+    }
+
     func windowDidResignKey(_ notification: Notification) {
         hide()
     }
@@ -138,6 +142,7 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
         panel.isOpaque = false
         panel.hasShadow = true
         panel.hidesOnDeactivate = true
+        panel.sharingType = PrivacySettingsStore.shared.showDuringScreenSharing ? .readOnly : .none
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         panel.delegate = self
         panel.onEscape = { [weak self] in
