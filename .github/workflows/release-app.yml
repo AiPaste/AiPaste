@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Show toolchain versions
         run: |
@@ -51,6 +53,15 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
         run: ./scripts/build_release_app.sh "${VERSION}"
 
+      - name: Compute release archive checksum
+        id: checksum
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          ARCHIVE="dist/AiPaste-${VERSION}-macOS.zip"
+          SHA256="$(shasum -a 256 "${ARCHIVE}" | awk '{print $1}')"
+          echo "value=${SHA256}" >> "${GITHUB_OUTPUT}"
+
       - name: Upload packaged app artifact
         uses: actions/upload-artifact@v4
         with:
@@ -69,3 +80,34 @@ jobs:
             "dist/AiPaste-${VERSION}-macOS.zip" \
             --title "AiPaste v${VERSION}" \
             --generate-notes
+
+      - name: Update Homebrew cask
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          SHA256: ${{ steps.checksum.outputs.value }}
+          TAP_REPOSITORY: AiPaste/homebrew-aipaste
+          TAP_BRANCH: main
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+        run: |
+          if [[ -z "${HOMEBREW_TAP_GITHUB_TOKEN}" ]]; then
+            echo "Missing HOMEBREW_TAP_GITHUB_TOKEN secret." >&2
+            exit 1
+          fi
+          chmod +x scripts/update_homebrew_cask.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          TAP_DIR="$(mktemp -d)"
+          git clone "https://x-access-token:${HOMEBREW_TAP_GITHUB_TOKEN}@github.com/${TAP_REPOSITORY}.git" "${TAP_DIR}"
+          mkdir -p "${TAP_DIR}/Casks"
+          cp packaging/homebrew/Casks/aipaste.rb "${TAP_DIR}/Casks/aipaste.rb"
+          python3 scripts/update_homebrew_cask.py "${TAP_DIR}/Casks/aipaste.rb" "${VERSION}" "${SHA256}"
+          cd "${TAP_DIR}"
+          git checkout "${TAP_BRANCH}"
+          if git diff --quiet -- Casks/aipaste.rb; then
+            echo "Cask already up to date."
+            exit 0
+          fi
+          git add Casks/aipaste.rb
+          git commit -m "Update Homebrew cask to v${VERSION}"
+          git push origin "HEAD:${TAP_BRANCH}"

@@ -102,3 +102,21 @@ GitHub Actions workflow:
 - trigger: push a tag like `v0.1.0`
 - output: `dist/AiPaste.app` and `dist/AiPaste-<version>-macOS.zip`
 - release: automatically creates a GitHub Release on tag pushes and uploads the packaged zip
+
+## Homebrew
+
+After the first tagged GitHub release is published, you can install AiPaste with Homebrew:
+
+```bash
+brew tap AiPaste/aipaste
+brew install --cask aipaste
+```
+
+Upgrade:
+
+```bash
+brew update
+brew upgrade --cask aipaste
+```
+
+The Homebrew cask template lives at `packaging/homebrew/Casks/aipaste.rb` and the release workflow publishes it into the dedicated tap repository `AiPaste/homebrew-aipaste` after each tagged release.
