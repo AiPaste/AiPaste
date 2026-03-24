@@ -601,53 +601,38 @@ private struct ClipboardCard: View {
     }
 
     private var imageBody: some View {
-        GeometryReader { proxy in
-            ZStack {
-                CheckerboardBackground()
+        VStack(spacing: 0) {
+            GeometryReader { proxy in
+                ZStack {
+                    CheckerboardBackground()
 
-                if let image = item.image {
-                    let horizontalInset: CGFloat = 14
-                    let topInset: CGFloat = 12
-                    let bottomInset: CGFloat = 34
-                    let availableWidth = max(proxy.size.width - horizontalInset * 2, 1)
-                    let availableHeight = max(proxy.size.height - topInset - bottomInset, 1)
-                    let imageWidth = CGFloat(item.imageSize?.width ?? Int(image.size.width))
-                    let imageHeight = CGFloat(item.imageSize?.height ?? Int(image.size.height))
-                    let safeImageWidth = max(imageWidth, 1)
-                    let safeImageHeight = max(imageHeight, 1)
-                    let imageAspectRatio = safeImageWidth / safeImageHeight
-                    let containerAspectRatio = availableWidth / availableHeight
-                    let targetSize = imageAspectRatio >= containerAspectRatio
-                        ? CGSize(
-                            width: availableWidth,
-                            height: availableWidth / imageAspectRatio
-                        )
-                        : CGSize(
-                            width: availableHeight * imageAspectRatio,
-                            height: availableHeight
-                        )
-
-                    Image(nsImage: image)
-                        .resizable()
-                        .interpolation(.high)
-                        .frame(width: targetSize.width, height: targetSize.height)
-                        .shadow(color: .black.opacity(0.28), radius: 10, y: 5)
-                        .frame(width: availableWidth, height: availableHeight, alignment: .center)
-                        .contentShape(Rectangle())
+                    if let image = item.image {
+                        Image(nsImage: image)
+                            .resizable()
+                            .interpolation(.high)
+                            .antialiased(true)
+                            .scaledToFit()
+                            .frame(
+                                width: proxy.size.width,
+                                height: proxy.size.height,
+                                alignment: .center
+                            )
+                            .shadow(color: .black.opacity(0.28), radius: 10, y: 5)
+                    }
                 }
-
-                VStack {
-                    Spacer(minLength: 0)
-
-                    Text(item.footerLabel)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.54))
-                        .padding(.bottom, 12)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 0, style: .continuous))
             }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Text(item.footerLabel)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.54))
+                .frame(maxWidth: .infinity)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.08, green: 0.08, blue: 0.09))
     }
 
