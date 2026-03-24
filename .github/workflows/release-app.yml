@@ -99,12 +99,17 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           TAP_DIR="$(mktemp -d)"
           git clone "https://x-access-token:${HOMEBREW_TAP_GITHUB_TOKEN}@github.com/${TAP_REPOSITORY}.git" "${TAP_DIR}"
-          mkdir -p "${TAP_DIR}/Casks"
-          cp packaging/homebrew/Casks/aipaste.rb "${TAP_DIR}/Casks/aipaste.rb"
-          python3 scripts/update_homebrew_cask.py "${TAP_DIR}/Casks/aipaste.rb" "${VERSION}" "${SHA256}"
           cd "${TAP_DIR}"
-          git checkout "${TAP_BRANCH}"
-          if git diff --quiet -- Casks/aipaste.rb; then
+          if git ls-remote --exit-code --heads origin "${TAP_BRANCH}" >/dev/null 2>&1; then
+            git checkout "${TAP_BRANCH}"
+          else
+            git checkout --orphan "${TAP_BRANCH}"
+            find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          fi
+          mkdir -p Casks
+          cp "${GITHUB_WORKSPACE}/packaging/homebrew/Casks/aipaste.rb" "Casks/aipaste.rb"
+          python3 "${GITHUB_WORKSPACE}/scripts/update_homebrew_cask.py" "Casks/aipaste.rb" "${VERSION}" "${SHA256}"
+          if [[ -z "$(git status --porcelain)" ]]; then
             echo "Cask already up to date."
             exit 0
           fi
