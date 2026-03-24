@@ -105,6 +105,13 @@ GitHub Actions workflow:
 - output: `dist/AiPaste.app` and `dist/AiPaste-<version>-macOS.zip`
 - release: automatically creates a GitHub Release on tag pushes and uploads the packaged zip
 
+Create an annotated release tag with both current and previous release change summaries:
+
+```bash
+./scripts/create_release_tag.sh v0.1.4
+./scripts/create_release_tag.sh v0.1.4 --push
+```
+
 ## Homebrew
 
 After the first tagged GitHub release is published, you can install AiPaste with Homebrew:
