@@ -94,6 +94,12 @@ swift build
 
 The repository now includes a static marketing site for GitHub Pages in [`docs/`](docs).
 
+Local preview:
+
+```bash
+./scripts/serve_website.sh
+```
+
 To publish it:
 
 1. Push the repository to GitHub.
