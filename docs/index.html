@@ -3,20 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AiPaste | Native macOS Clipboard Manager</title>
+    <title>AiPaste | AI Native Clipboard Manager for macOS</title>
     <meta
       name="description"
-      content="AiPaste is a native macOS clipboard manager built with SwiftUI. Keep, search, organize, and paste back everything you copy."
+      content="AiPaste is an AI native clipboard manager for macOS. Keep prompts, context snippets, model outputs, and reusable commands organized and searchable."
     />
     <meta
       name="keywords"
-      content="AiPaste, macOS clipboard manager, SwiftUI clipboard app, Homebrew, GitHub Pages"
+      content="AiPaste, AI native clipboard manager, macOS clipboard manager, prompt manager, SwiftUI clipboard app, Homebrew"
     />
     <meta name="theme-color" content="#f6f5f2" />
     <meta property="og:title" content="AiPaste" />
     <meta
       property="og:description"
-      content="A native clipboard manager for macOS with fast history, groups, CLI control, and a calm local-first workflow."
+      content="An AI native clipboard manager for macOS with prompt-ready history, search, groups, CLI control, and a calm local-first workflow."
     />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="assets/app-icon.png" />
@@ -39,7 +39,7 @@
           <img class="brand-icon" src="assets/app-icon.png" alt="AiPaste app icon" />
           <span class="brand-copy">
             <strong>AiPaste</strong>
-            <span>native clipboard manager for macOS</span>
+            <span>AI native clipboard manager for macOS</span>
           </span>
         </a>
 
@@ -58,11 +58,15 @@
       <main>
         <section class="hero" id="overview">
           <div class="hero-copy">
-            <p class="eyebrow">macOS clipboard, made calmer</p>
-            <h1>Your clipboard, organized, searchable, and ready when work gets messy.</h1>
+            <p class="eyebrow">AI native clipboard for macOS</p>
+            <h1 class="hero-headline" aria-label="Your prompts, context, and model outputs. Organized and ready the second you need them.">
+              <span>Your prompts, context, and model outputs.</span>
+              <span>Organized and ready the second you need them.</span>
+            </h1>
             <p class="hero-lead">
-              AiPaste keeps everything you copy within reach. Built in SwiftUI, local-first by default, and fast enough
-              to disappear into your workflow until the moment you need it.
+              AiPaste keeps your AI workflow artifacts within reach: prompts, code fixes, research fragments, terminal
+              commands, and the one perfect answer you do not want to lose. Built in SwiftUI, local-first by default,
+              and fast enough to disappear into your workflow until the moment you need it.
             </p>
 
             <div class="hero-actions">
@@ -85,10 +89,18 @@
             </div>
 
             <ul class="hero-notes" aria-label="Product notes">
-              <li>Native SwiftUI app, no Electron shell</li>
-              <li>Clipboard history, groups, pinning, paste-back, and CLI</li>
-              <li>Homebrew install and GitHub Release updates</li>
+              <li>Built for ChatGPT, Claude, Cursor, and terminal-heavy work</li>
+              <li>Prompt history, groups, pinning, paste-back, and CLI control</li>
+              <li>Native SwiftUI app with Homebrew install and local-first storage</li>
             </ul>
+
+            <div class="tool-strip" aria-label="AI workflow tools">
+              <span>ChatGPT</span>
+              <span>Claude</span>
+              <span>Cursor</span>
+              <span>Terminal</span>
+              <span>Docs</span>
+            </div>
           </div>
 
           <div class="hero-stage" aria-hidden="true">
@@ -113,80 +125,105 @@
 
                 <article class="clip-preview clip-preview-active">
                   <div class="clip-topline">
-                    <span class="clip-app">Terminal</span>
+                    <span class="clip-app">Claude</span>
                     <span class="clip-time">Just now</span>
                   </div>
-                  <strong>brew install --cask aipaste</strong>
-                  <p>Install from Homebrew and get back to work in a minute.</p>
+                  <strong>Rewrite this API error into a user-facing explanation with next steps.</strong>
+                  <p>Keep the prompt you finally got right instead of reconstructing it from memory.</p>
                 </article>
 
                 <article class="clip-preview">
                   <div class="clip-topline">
-                    <span class="clip-app">Xcode</span>
+                    <span class="clip-app">Cursor</span>
                     <span class="clip-time">2 min ago</span>
                   </div>
-                  <strong>./bin/aipaste items paste 1</strong>
-                  <p>Reuse the last command or snippet without digging through windows.</p>
+                  <strong>Use this file as context and propose the smallest safe patch.</strong>
+                  <p>Reuse the exact context snippet that produced the good code review or patch.</p>
                 </article>
 
                 <article class="clip-preview">
                   <div class="clip-topline">
-                    <span class="clip-app">Safari</span>
+                    <span class="clip-app">Terminal</span>
                     <span class="clip-time">8 min ago</span>
                   </div>
-                  <strong>Ignore noisy apps. Keep useful clips.</strong>
-                  <p>Define rules for apps you do not want in history.</p>
+                  <strong>./bin/aipaste items paste 1</strong>
+                  <p>Move from browser to IDE to terminal without losing the answer you were using.</p>
                 </article>
               </div>
             </div>
 
             <div class="device-float float-terminal">
-              <p>CLI</p>
-              <code>$ ./bin/aipaste list --limit 10</code>
-              <code>$ ./bin/aipaste groups create work</code>
+              <p>prompt ops</p>
+              <code>$ ./bin/aipaste list --search prompt</code>
+              <code>$ ./bin/aipaste groups create claude</code>
             </div>
 
             <div class="device-float float-badge">
-              <span>private by default</span>
-              <strong>Your clipboard stays on your Mac</strong>
+              <span>ai native, not ai noisy</span>
+              <strong>Keep the useful context. Drop the repetitive copy-paste chaos.</strong>
             </div>
           </div>
         </section>
 
         <section class="metrics-strip" aria-label="Highlights">
           <article>
-            <strong>Local-first</strong>
-            <p>No web runtime. No fake desktop shell. Just a native Mac app.</p>
+            <strong>Prompt-ready</strong>
+            <p>Keep your best prompts, reusable instructions, and context snippets one search away.</p>
           </article>
           <article>
-            <strong>Fast search</strong>
-            <p>Find commands, prompts, and fragments by memory instead of exact wording.</p>
+            <strong>Context retrieval</strong>
+            <p>Find commands, patches, model outputs, and fragments by memory instead of exact wording.</p>
           </article>
           <article>
-            <strong>Reusable workflow</strong>
-            <p>Copy again, paste back, pin, group, or automate the same actions from CLI.</p>
+            <strong>Cross-tool loop</strong>
+            <p>Move cleanly between AI chat, IDE, docs, and terminal without losing state.</p>
           </article>
         </section>
 
         <section class="story-block">
           <div class="story-copy">
-            <p class="eyebrow">Limitless clipboard</p>
-            <h2>Keep everything you copy close, without turning your desktop into clutter.</h2>
+            <p class="eyebrow">AI native workflow</p>
+            <h2>When your work is half prompt engineering and half execution, clipboard history becomes infrastructure.</h2>
             <p>
-              AiPaste is designed for developers, writers, and operators who copy dozens of small things every hour and
-              still need to retrieve the right one instantly.
+              AiPaste is designed for developers, founders, operators, and researchers who bounce between model chats,
+              code editors, docs, and terminals all day and need their working context to stay intact.
             </p>
+          </div>
+        </section>
+
+        <section class="ai-usecases">
+          <div class="section-heading">
+            <p class="eyebrow">Use Cases</p>
+            <h2>Made for people working with AI all day, not occasionally.</h2>
+          </div>
+
+          <div class="usecase-grid">
+            <article class="usecase-card">
+              <p class="feature-label">PROMPTS</p>
+              <h3>Keep the exact prompt that finally worked</h3>
+              <p>Store refined instructions, chain-of-thought wrappers, critique formats, and repeatable prompt patterns.</p>
+            </article>
+            <article class="usecase-card">
+              <p class="feature-label">CONTEXT</p>
+              <h3>Reuse code and document context across tools</h3>
+              <p>Move snippets from GitHub, terminal logs, issue threads, and source files into the next AI interaction fast.</p>
+            </article>
+            <article class="usecase-card">
+              <p class="feature-label">OUTPUTS</p>
+              <h3>Save the answer before the next tab buries it</h3>
+              <p>Keep useful model responses, rewritten copy, SQL fixes, shell commands, and release notes drafts in reach.</p>
+            </article>
           </div>
         </section>
 
         <section class="feature-stack" id="features">
           <article class="feature-panel">
             <div class="feature-copy">
-              <p class="feature-label">KEEP</p>
-              <h3>Infinite clipboard history that feels light.</h3>
+              <p class="feature-label">CAPTURE</p>
+              <h3>Capture AI prompts, answers, and commands without breaking flow.</h3>
               <p>
-                AiPaste monitors the pasteboard continuously and keeps recent text clips in a clean, scan-friendly
-                layout instead of burying them in a dense list.
+                AiPaste monitors the pasteboard continuously and keeps the working fragments of your AI sessions in a
+                clean, scan-friendly layout instead of burying them in a dense list.
               </p>
             </div>
             <div class="feature-visual feature-visual-history" aria-hidden="true">
@@ -199,19 +236,19 @@
                 <div class="history-grid">
                   <div class="history-card featured">
                     <span>Prompt</span>
-                    <strong>Summarize the error log and point out root cause.</strong>
+                    <strong>Summarize the error log, identify root cause, then propose the safest minimal fix.</strong>
                   </div>
                   <div class="history-card">
-                    <span>Shell</span>
-                    <strong>git status --short</strong>
+                    <span>Context</span>
+                    <strong>Auth middleware, token refresh path, failing stack trace</strong>
                   </div>
                   <div class="history-card">
-                    <span>Docs</span>
-                    <strong>Homebrew install instructions</strong>
+                    <span>Patch</span>
+                    <strong>Guard nil session before attempting refresh</strong>
                   </div>
                   <div class="history-card">
-                    <span>Link</span>
-                    <strong>Release notes draft</strong>
+                    <span>Output</span>
+                    <strong>User-facing summary for incident update</strong>
                   </div>
                 </div>
               </div>
@@ -220,27 +257,27 @@
 
           <article class="feature-panel feature-panel-reverse">
             <div class="feature-copy">
-              <p class="feature-label">SEARCH</p>
-              <h3>Find the right clip before your train of thought breaks.</h3>
+              <p class="feature-label">RETRIEVE</p>
+              <h3>Find the right prompt or answer before your train of thought breaks.</h3>
               <p>
-                Search across recent clips, jump through groups, and use source context from the frontmost app to get
-                back to what you copied earlier.
+                Search across recent clips, jump through groups, and use app context to get back to the exact prompt,
+                code block, or model output you copied earlier.
               </p>
             </div>
             <div class="feature-visual feature-visual-search" aria-hidden="true">
               <div class="search-shell">
-                <div class="search-input">Search clips, apps, commands...</div>
+                <div class="search-input">Search prompts, outputs, apps, commands...</div>
                 <div class="search-result strong">
-                  <span>Xcode</span>
-                  <strong>Panel toggle, app ignore rules, persistent local history</strong>
+                  <span>Claude</span>
+                  <strong>Rewrite this changelog for users, not engineers</strong>
+                </div>
+                <div class="search-result">
+                  <span>Cursor</span>
+                  <strong>Use this file as context and explain only the regression risk</strong>
                 </div>
                 <div class="search-result">
                   <span>Terminal</span>
-                  <strong>./bin/aipaste list --search swift --limit 10</strong>
-                </div>
-                <div class="search-result">
-                  <span>Safari</span>
-                  <strong>Accessibility permission for paste-to-app</strong>
+                  <strong>./bin/aipaste list --search release --limit 10</strong>
                 </div>
               </div>
             </div>
@@ -249,31 +286,31 @@
           <article class="feature-panel">
             <div class="feature-copy">
               <p class="feature-label">ORGANIZE</p>
-              <h3>Group what matters and ignore what does not.</h3>
+              <h3>Build a reusable library of prompts, snippets, and context blocks.</h3>
               <p>
-                Pin recurring snippets, move clips into named groups, recolor workspaces, and exclude noisy or
-                sensitive apps so your clipboard history stays useful.
+                Pin recurring prompts, move clips into named groups, recolor workspaces, and exclude noisy or sensitive
+                apps so your history stays useful instead of overwhelming.
               </p>
             </div>
             <div class="feature-visual feature-visual-groups" aria-hidden="true">
               <div class="group-board">
-                <div class="group-chip green">work</div>
-                <div class="group-chip sand">docs</div>
+                <div class="group-chip green">claude</div>
+                <div class="group-chip sand">cursor</div>
                 <div class="group-chip coral">research</div>
                 <div class="group-list">
                   <div class="group-row">
                     <span class="dot green"></span>
-                    <strong>release commands</strong>
+                    <strong>review prompts</strong>
                     <em>7 items</em>
                   </div>
                   <div class="group-row">
                     <span class="dot sand"></span>
-                    <strong>prompt snippets</strong>
+                    <strong>code context blocks</strong>
                     <em>12 items</em>
                   </div>
                   <div class="group-row">
                     <span class="dot coral"></span>
-                    <strong>links to revisit</strong>
+                    <strong>research fragments</strong>
                     <em>5 items</em>
                   </div>
                 </div>
@@ -283,11 +320,11 @@
 
           <article class="feature-panel feature-panel-reverse">
             <div class="feature-copy">
-              <p class="feature-label">AUTOMATE</p>
-              <h3>Use the app when you want UI. Use the CLI when you do not.</h3>
+              <p class="feature-label">OPERATE</p>
+              <h3>Use the app when you want UI. Use the CLI when your AI workflow is already scripted.</h3>
               <p>
                 Show or hide the panel, paste a selected clip, manage groups, and change configuration from terminal
-                commands that match the same workflow as the desktop app.
+                commands that match the same workflow you use across AI tools and dev environments.
               </p>
             </div>
             <div class="feature-visual feature-visual-cli" aria-hidden="true">
@@ -297,10 +334,10 @@
                   <span></span>
                   <span></span>
                 </div>
-                <code>$ ./bin/aipaste panel toggle</code>
+                <code>$ ./bin/aipaste list --search claude</code>
                 <code>$ ./bin/aipaste items paste 1</code>
-                <code>$ ./bin/aipaste groups rename group-1 archive</code>
-                <code>$ ./bin/aipaste config set run-in-background false</code>
+                <code>$ ./bin/aipaste groups create prompts</code>
+                <code>$ ./bin/aipaste config set history-retention week</code>
               </div>
             </div>
           </article>
@@ -308,19 +345,19 @@
 
         <section class="capability-grid">
           <article class="capability-card">
+            <p class="feature-label">AI LOOP</p>
+            <h3>Move cleanly between prompt, output, code, and docs</h3>
+            <p>AiPaste keeps the small pieces of context that make AI work actually usable across many tabs and tools.</p>
+          </article>
+          <article class="capability-card">
             <p class="feature-label">PASTE BACK</p>
             <h3>Return text to the previously active app</h3>
             <p>When Accessibility is enabled, AiPaste can paste directly back into the app you were just using.</p>
           </article>
           <article class="capability-card">
-            <p class="feature-label">UPDATE READY</p>
-            <h3>Ship from GitHub Releases</h3>
-            <p>Packaged releases, background update checks, and a clear upgrade path without building your own updater stack.</p>
-          </article>
-          <article class="capability-card">
-            <p class="feature-label">DISTRIBUTION</p>
-            <h3>Install with Homebrew</h3>
-            <p>Use `brew install --cask aipaste` and keep installs close to how Mac developers already work.</p>
+            <p class="feature-label">PRIVATE BY DEFAULT</p>
+            <h3>Keep sensitive AI context local</h3>
+            <p>Your prompts, snippets, and copied outputs stay in a native local-first app instead of another web layer.</p>
           </article>
         </section>
 
@@ -349,7 +386,7 @@ Move AiPaste.app to /Applications</code></pre>
 
             <article class="install-card">
               <p class="feature-label">CLI</p>
-              <h3>Best for scriptable workflows</h3>
+              <h3>Best for scriptable AI workflows</h3>
               <pre><code>./bin/aipaste help
 ./bin/aipaste list --limit 10
 ./bin/aipaste items paste 1</code></pre>
@@ -360,10 +397,14 @@ Move AiPaste.app to /Applications</code></pre>
         <section class="faq-section" id="faq">
           <div class="section-heading">
             <p class="eyebrow">FAQ</p>
-            <h2>Built for native Mac workflows.</h2>
+            <h2>Built for AI-heavy native Mac workflows.</h2>
           </div>
 
           <div class="faq-grid">
+            <article>
+              <h3>Is this an AI app?</h3>
+              <p>It is AI native, not an LLM wrapper. AiPaste helps you manage the prompts, context, and outputs around AI work.</p>
+            </article>
             <article>
               <h3>Does it store data locally?</h3>
               <p>Yes. AiPaste is designed as a local-first clipboard tool for macOS.</p>
@@ -385,9 +426,9 @@ Move AiPaste.app to /Applications</code></pre>
 
         <section class="cta-section">
           <p class="eyebrow">AiPaste</p>
-          <h2>Do more with what you already copied.</h2>
+          <h2>Stop rebuilding the same prompt and context from scratch.</h2>
           <p>
-            A native clipboard manager for people who move fast and still want their desktop to feel calm.
+            A native clipboard manager for people doing serious AI work on macOS and tired of losing the useful parts.
           </p>
           <div class="hero-actions">
             <a class="button button-primary" href="https://github.com/AiPaste/AiPaste/releases" target="_blank" rel="noreferrer">
@@ -405,7 +446,7 @@ Move AiPaste.app to /Applications</code></pre>
           <img src="assets/app-icon.png" alt="" />
           <div>
             <strong>AiPaste</strong>
-            <p>Native macOS clipboard manager built with SwiftUI.</p>
+            <p>AI native macOS clipboard manager built with SwiftUI.</p>
           </div>
         </div>
 

@@ -90,6 +90,7 @@ pre code {
 .hero,
 .metrics-strip,
 .story-block,
+.ai-usecases,
 .feature-stack,
 .capability-grid,
 .install-section,
@@ -223,7 +224,7 @@ pre code {
   color: var(--mint-strong);
 }
 
-.hero h1,
+.hero-headline,
 .story-copy h2,
 .section-heading h2,
 .cta-section h2,
@@ -232,7 +233,7 @@ pre code {
   letter-spacing: -0.04em;
 }
 
-.hero h1,
+.hero-headline,
 .story-copy h2,
 .section-heading h2,
 .cta-section h2 {
@@ -241,10 +242,16 @@ pre code {
   line-height: 0.95;
 }
 
-.hero h1 {
-  max-width: 12ch;
+.hero-headline {
+  display: grid;
+  gap: 0.06em;
+  max-width: 14ch;
   margin: 0 auto;
-  font-size: clamp(3.7rem, 8vw, 6.5rem);
+  font-size: clamp(3.4rem, 6.8vw, 5.9rem);
+}
+
+.hero-headline span {
+  display: block;
 }
 
 .hero-lead {
@@ -309,6 +316,29 @@ pre code {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.58);
   font-size: 0.92rem;
+}
+
+.tool-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.tool-strip span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--text-soft);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .hero-stage {
@@ -551,6 +581,39 @@ pre code {
 .cta-section h2 {
   max-width: 12ch;
   font-size: clamp(2.8rem, 5vw, 4.6rem);
+}
+
+.ai-usecases {
+  padding: 48px 0 4px;
+}
+
+.usecase-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.usecase-card {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow);
+}
+
+.usecase-card h3 {
+  max-width: 15ch;
+  margin: 0;
+  font-size: 1.42rem;
+  line-height: 1.18;
+  letter-spacing: -0.03em;
+}
+
+.usecase-card p:last-child {
+  margin: 12px 0 0;
+  color: var(--text-soft);
+  line-height: 1.8;
 }
 
 .feature-stack {
@@ -892,6 +955,7 @@ pre code {
 
   .feature-panel,
   .feature-panel-reverse,
+  .usecase-grid,
   .capability-grid,
   .install-grid,
   .site-footer {
@@ -923,6 +987,7 @@ pre code {
   .hero,
   .metrics-strip,
   .story-block,
+  .ai-usecases,
   .feature-stack,
   .capability-grid,
   .install-section,
@@ -949,8 +1014,9 @@ pre code {
     padding-top: 18px;
   }
 
-  .hero h1 {
+  .hero-headline {
     font-size: clamp(3.1rem, 17vw, 4.9rem);
+    max-width: 10ch;
   }
 
   .hero-stage {
@@ -989,7 +1055,8 @@ pre code {
   }
 
   .metrics-strip,
-  .faq-grid {
+  .faq-grid,
+  .usecase-grid {
     grid-template-columns: 1fr;
   }
 
