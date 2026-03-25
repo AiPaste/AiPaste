@@ -90,6 +90,20 @@ To enable automatic paste-back into the previously active app, grant AiPaste Acc
 swift build
 ```
 
+## Website
+
+The repository now includes a static marketing site for GitHub Pages in [`docs/`](docs).
+
+To publish it:
+
+1. Push the repository to GitHub.
+2. Open `Settings -> Pages`.
+3. Set `Build and deployment` to `Deploy from a branch`.
+4. Select the current branch and the `/docs` folder.
+5. Save, then wait for GitHub Pages to publish.
+
+The page entry point is `docs/index.html`.
+
 ## Release App
 
 Build a local `.app` bundle and release zip:
