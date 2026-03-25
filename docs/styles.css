@@ -106,7 +106,7 @@ pre code {
   top: 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 16px;
   padding: 22px 0;
@@ -117,12 +117,15 @@ pre code {
   display: inline-flex;
   align-items: center;
   gap: 12px;
+  justify-self: end;
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
   gap: 12px;
+  justify-self: start;
+  min-width: 0;
 }
 
 .brand-icon,
@@ -203,6 +206,7 @@ pre code {
   align-items: center;
   justify-content: center;
   min-height: 46px;
+  min-width: 124px;
   padding: 0 18px;
   border-radius: 999px;
   background: var(--surface-strong);
