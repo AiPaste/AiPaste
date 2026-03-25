@@ -3,20 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AiPaste | Native macOS Clipboard Command Center</title>
+    <title>AiPaste | Native macOS Clipboard Manager</title>
     <meta
       name="description"
-      content="AiPaste is a native macOS clipboard manager built with SwiftUI. Search, pin, group, paste back, and automate your clipboard without Electron or a web runtime."
+      content="AiPaste is a native macOS clipboard manager built with SwiftUI. Keep, search, organize, and paste back everything you copy."
     />
     <meta
       name="keywords"
       content="AiPaste, macOS clipboard manager, SwiftUI clipboard app, Homebrew, GitHub Pages"
     />
-    <meta name="theme-color" content="#f1ece2" />
+    <meta name="theme-color" content="#f6f5f2" />
     <meta property="og:title" content="AiPaste" />
     <meta
       property="og:description"
-      content="A native macOS clipboard command center with fast history, groups, CLI, and Homebrew install."
+      content="A native clipboard manager for macOS with fast history, groups, CLI control, and a calm local-first workflow."
     />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="assets/app-icon.png" />
@@ -31,33 +31,38 @@
   </head>
   <body>
     <div class="page-shell">
-      <div class="page-grain"></div>
+      <div class="ambient ambient-left" aria-hidden="true"></div>
+      <div class="ambient ambient-right" aria-hidden="true"></div>
 
       <header class="site-header">
         <a class="brand" href="#">
-          <span class="brand-mark">A</span>
-          <span class="brand-text">
+          <img class="brand-icon" src="assets/app-icon.png" alt="AiPaste app icon" />
+          <span class="brand-copy">
             <strong>AiPaste</strong>
-            <em>native clipboard tool for macOS</em>
+            <span>native clipboard manager for macOS</span>
           </span>
         </a>
 
         <nav class="site-nav" aria-label="Primary">
+          <a href="#overview">Overview</a>
           <a href="#features">Features</a>
           <a href="#install">Install</a>
-          <a href="#workflow">Workflow</a>
-          <a href="https://github.com/AiPaste/AiPaste" target="_blank" rel="noreferrer">GitHub</a>
+          <a href="#faq">FAQ</a>
         </nav>
+
+        <a class="header-cta" href="https://github.com/AiPaste/AiPaste/releases" target="_blank" rel="noreferrer">
+          Try for free
+        </a>
       </header>
 
       <main>
-        <section class="hero">
+        <section class="hero" id="overview">
           <div class="hero-copy">
-            <p class="eyebrow">macOS clipboard command center</p>
-            <h1>Stop losing the one thing you copied ten seconds ago.</h1>
+            <p class="eyebrow">macOS clipboard, made calmer</p>
+            <h1>Your clipboard, organized, searchable, and ready when work gets messy.</h1>
             <p class="hero-lead">
-              AiPaste keeps your clipboard history local, searchable, pinnable, groupable, and instantly reusable.
-              It is built in SwiftUI for people who want a Mac app, not a browser pretending to be one.
+              AiPaste keeps everything you copy within reach. Built in SwiftUI, local-first by default, and fast enough
+              to disappear into your workflow until the moment you need it.
             </p>
 
             <div class="hero-actions">
@@ -67,7 +72,7 @@
                 target="_blank"
                 rel="noreferrer"
               >
-                Download Release
+                Download for macOS
               </a>
               <a
                 class="button button-secondary"
@@ -75,221 +80,341 @@
                 target="_blank"
                 rel="noreferrer"
               >
-                View Source
+                View on GitHub
               </a>
             </div>
 
-            <ul class="hero-points" aria-label="Highlights">
-              <li>Native SwiftUI app with no Electron runtime</li>
-              <li>Clipboard history, groups, pinning, and paste-back flow</li>
-              <li>Built-in CLI, Homebrew install, and auto-updates</li>
+            <ul class="hero-notes" aria-label="Product notes">
+              <li>Native SwiftUI app, no Electron shell</li>
+              <li>Clipboard history, groups, pinning, paste-back, and CLI</li>
+              <li>Homebrew install and GitHub Release updates</li>
             </ul>
-
-            <div class="hero-inline-code">
-              <span>Install with</span>
-              <code>brew install --cask aipaste</code>
-            </div>
           </div>
 
-          <div class="hero-art" aria-hidden="true">
-            <div class="hero-card hero-card-panel">
-              <div class="window-bar">
+          <div class="hero-stage" aria-hidden="true">
+            <div class="device device-main">
+              <div class="device-bar">
                 <span></span>
                 <span></span>
                 <span></span>
               </div>
-              <div class="panel-header">
-                <div>
-                  <p>Recent Clips</p>
-                  <strong>AiPaste</strong>
+              <div class="device-sidebar">
+                <p>AiPaste</p>
+                <span>All clips</span>
+                <span>Pinned</span>
+                <span>Work</span>
+                <span>Archive</span>
+              </div>
+              <div class="device-content">
+                <div class="device-toolbar">
+                  <strong>Recent clipboard</strong>
+                  <span class="pill">Searchable</span>
                 </div>
-                <span class="panel-chip">searchable</span>
-              </div>
-              <div class="clip-stack">
-                <article class="clip-card active">
-                  <span class="clip-source">Xcode</span>
+
+                <article class="clip-preview clip-preview-active">
+                  <div class="clip-topline">
+                    <span class="clip-app">Terminal</span>
+                    <span class="clip-time">Just now</span>
+                  </div>
                   <strong>brew install --cask aipaste</strong>
-                  <p>One command. Native app. Zero web runtime.</p>
+                  <p>Install from Homebrew and get back to work in a minute.</p>
                 </article>
-                <article class="clip-card">
-                  <span class="clip-source">Terminal</span>
-                  <strong>./bin/aipaste list --limit 10</strong>
-                  <p>Search, copy, paste, pin, and organize from the command line.</p>
+
+                <article class="clip-preview">
+                  <div class="clip-topline">
+                    <span class="clip-app">Xcode</span>
+                    <span class="clip-time">2 min ago</span>
+                  </div>
+                  <strong>./bin/aipaste items paste 1</strong>
+                  <p>Reuse the last command or snippet without digging through windows.</p>
                 </article>
-                <article class="clip-card">
-                  <span class="clip-source">Safari</span>
-                  <strong>Panel toggle, group move, app ignore rules</strong>
-                  <p>Built for real clipboard volume, not toy snippets.</p>
+
+                <article class="clip-preview">
+                  <div class="clip-topline">
+                    <span class="clip-app">Safari</span>
+                    <span class="clip-time">8 min ago</span>
+                  </div>
+                  <strong>Ignore noisy apps. Keep useful clips.</strong>
+                  <p>Define rules for apps you do not want in history.</p>
                 </article>
               </div>
             </div>
 
-            <div class="hero-card hero-card-terminal">
-              <p class="terminal-title">CLI included</p>
-              <div class="terminal-lines">
-                <span>$ ./bin/aipaste panel toggle</span>
-                <span>$ ./bin/aipaste items paste 1</span>
-                <span>$ ./bin/aipaste groups create work</span>
-              </div>
+            <div class="device-float float-terminal">
+              <p>CLI</p>
+              <code>$ ./bin/aipaste list --limit 10</code>
+              <code>$ ./bin/aipaste groups create work</code>
             </div>
 
-            <div class="hero-card hero-card-badge">
-              <img src="assets/app-icon.png" alt="" />
-              <div>
-                <p>local-first</p>
-                <strong>Native feel, fast loop</strong>
-              </div>
+            <div class="device-float float-badge">
+              <span>private by default</span>
+              <strong>Your clipboard stays on your Mac</strong>
             </div>
           </div>
         </section>
 
-        <section class="signal-strip" aria-label="Core product signals">
-          <div>
-            <span>Local-first</span>
-            <p>Your clipboard stays on your Mac.</p>
-          </div>
-          <div>
-            <span>CLI-ready</span>
-            <p>Automate common actions without touching the UI.</p>
-          </div>
-          <div>
-            <span>Release-friendly</span>
-            <p>GitHub Releases, Homebrew, and automatic update checks included.</p>
-          </div>
+        <section class="metrics-strip" aria-label="Highlights">
+          <article>
+            <strong>Local-first</strong>
+            <p>No web runtime. No fake desktop shell. Just a native Mac app.</p>
+          </article>
+          <article>
+            <strong>Fast search</strong>
+            <p>Find commands, prompts, and fragments by memory instead of exact wording.</p>
+          </article>
+          <article>
+            <strong>Reusable workflow</strong>
+            <p>Copy again, paste back, pin, group, or automate the same actions from CLI.</p>
+          </article>
         </section>
 
-        <section class="section" id="features">
-          <div class="section-intro">
-            <p class="eyebrow">Why it exists</p>
-            <h2>Clipboard tools should feel invisible until the exact second you need them.</h2>
+        <section class="story-block">
+          <div class="story-copy">
+            <p class="eyebrow">Limitless clipboard</p>
+            <h2>Keep everything you copy close, without turning your desktop into clutter.</h2>
             <p>
-              AiPaste is tuned for frequent copy-paste work: engineering notes, shell commands, prompts, reusable
-              snippets, and the half-finished fragments you do not want to lose while context-switching.
+              AiPaste is designed for developers, writers, and operators who copy dozens of small things every hour and
+              still need to retrieve the right one instantly.
             </p>
           </div>
-
-          <div class="feature-grid">
-            <article class="feature-card feature-card-wide">
-              <span class="feature-index">01</span>
-              <h3>Fast history with source awareness</h3>
-              <p>
-                AiPaste watches the system pasteboard, keeps recent text clips locally, and tracks the frontmost app
-                so your history is easier to scan.
-              </p>
-            </article>
-
-            <article class="feature-card">
-              <span class="feature-index">02</span>
-              <h3>Pin what matters</h3>
-              <p>Save the commands, links, and answers you reuse every day without re-copying them again and again.</p>
-            </article>
-
-            <article class="feature-card">
-              <span class="feature-index">03</span>
-              <h3>Group by project</h3>
-              <p>Move items into named groups, color them, rename them, and keep work clips separate from everything else.</p>
-            </article>
-
-            <article class="feature-card">
-              <span class="feature-index">04</span>
-              <h3>Paste back into the active app</h3>
-              <p>Use Accessibility-backed paste-to-app actions when you need speed more than manual switching.</p>
-            </article>
-
-            <article class="feature-card">
-              <span class="feature-index">05</span>
-              <h3>Ignore noisy apps</h3>
-              <p>Define ignore rules for apps or bundle IDs so transient or sensitive sources do not pollute history.</p>
-            </article>
-
-            <article class="feature-card">
-              <span class="feature-index">06</span>
-              <h3>Native distribution path</h3>
-              <p>Install with Homebrew, download packaged releases, and get automatic update checks from GitHub Releases.</p>
-            </article>
-          </div>
         </section>
 
-        <section class="section install-section" id="install">
-          <div class="section-intro narrow">
+        <section class="feature-stack" id="features">
+          <article class="feature-panel">
+            <div class="feature-copy">
+              <p class="feature-label">KEEP</p>
+              <h3>Infinite clipboard history that feels light.</h3>
+              <p>
+                AiPaste monitors the pasteboard continuously and keeps recent text clips in a clean, scan-friendly
+                layout instead of burying them in a dense list.
+              </p>
+            </div>
+            <div class="feature-visual feature-visual-history" aria-hidden="true">
+              <div class="visual-window">
+                <div class="mini-bar">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <div class="history-grid">
+                  <div class="history-card featured">
+                    <span>Prompt</span>
+                    <strong>Summarize the error log and point out root cause.</strong>
+                  </div>
+                  <div class="history-card">
+                    <span>Shell</span>
+                    <strong>git status --short</strong>
+                  </div>
+                  <div class="history-card">
+                    <span>Docs</span>
+                    <strong>Homebrew install instructions</strong>
+                  </div>
+                  <div class="history-card">
+                    <span>Link</span>
+                    <strong>Release notes draft</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="feature-panel feature-panel-reverse">
+            <div class="feature-copy">
+              <p class="feature-label">SEARCH</p>
+              <h3>Find the right clip before your train of thought breaks.</h3>
+              <p>
+                Search across recent clips, jump through groups, and use source context from the frontmost app to get
+                back to what you copied earlier.
+              </p>
+            </div>
+            <div class="feature-visual feature-visual-search" aria-hidden="true">
+              <div class="search-shell">
+                <div class="search-input">Search clips, apps, commands...</div>
+                <div class="search-result strong">
+                  <span>Xcode</span>
+                  <strong>Panel toggle, app ignore rules, persistent local history</strong>
+                </div>
+                <div class="search-result">
+                  <span>Terminal</span>
+                  <strong>./bin/aipaste list --search swift --limit 10</strong>
+                </div>
+                <div class="search-result">
+                  <span>Safari</span>
+                  <strong>Accessibility permission for paste-to-app</strong>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="feature-panel">
+            <div class="feature-copy">
+              <p class="feature-label">ORGANIZE</p>
+              <h3>Group what matters and ignore what does not.</h3>
+              <p>
+                Pin recurring snippets, move clips into named groups, recolor workspaces, and exclude noisy or
+                sensitive apps so your clipboard history stays useful.
+              </p>
+            </div>
+            <div class="feature-visual feature-visual-groups" aria-hidden="true">
+              <div class="group-board">
+                <div class="group-chip green">work</div>
+                <div class="group-chip sand">docs</div>
+                <div class="group-chip coral">research</div>
+                <div class="group-list">
+                  <div class="group-row">
+                    <span class="dot green"></span>
+                    <strong>release commands</strong>
+                    <em>7 items</em>
+                  </div>
+                  <div class="group-row">
+                    <span class="dot sand"></span>
+                    <strong>prompt snippets</strong>
+                    <em>12 items</em>
+                  </div>
+                  <div class="group-row">
+                    <span class="dot coral"></span>
+                    <strong>links to revisit</strong>
+                    <em>5 items</em>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="feature-panel feature-panel-reverse">
+            <div class="feature-copy">
+              <p class="feature-label">AUTOMATE</p>
+              <h3>Use the app when you want UI. Use the CLI when you do not.</h3>
+              <p>
+                Show or hide the panel, paste a selected clip, manage groups, and change configuration from terminal
+                commands that match the same workflow as the desktop app.
+              </p>
+            </div>
+            <div class="feature-visual feature-visual-cli" aria-hidden="true">
+              <div class="cli-window">
+                <div class="mini-bar">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <code>$ ./bin/aipaste panel toggle</code>
+                <code>$ ./bin/aipaste items paste 1</code>
+                <code>$ ./bin/aipaste groups rename group-1 archive</code>
+                <code>$ ./bin/aipaste config set run-in-background false</code>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="capability-grid">
+          <article class="capability-card">
+            <p class="feature-label">PASTE BACK</p>
+            <h3>Return text to the previously active app</h3>
+            <p>When Accessibility is enabled, AiPaste can paste directly back into the app you were just using.</p>
+          </article>
+          <article class="capability-card">
+            <p class="feature-label">UPDATE READY</p>
+            <h3>Ship from GitHub Releases</h3>
+            <p>Packaged releases, background update checks, and a clear upgrade path without building your own updater stack.</p>
+          </article>
+          <article class="capability-card">
+            <p class="feature-label">DISTRIBUTION</p>
+            <h3>Install with Homebrew</h3>
+            <p>Use `brew install --cask aipaste` and keep installs close to how Mac developers already work.</p>
+          </article>
+        </section>
+
+        <section class="install-section" id="install">
+          <div class="section-heading">
             <p class="eyebrow">Install</p>
-            <h2>Choose the path that matches how you ship software on macOS.</h2>
+            <h2>Choose the path that matches your workflow.</h2>
           </div>
 
-          <div class="install-panel">
-            <div class="install-tabs" role="tablist" aria-label="Install options">
-              <button class="tab-button is-active" type="button" data-tab="brew">Homebrew</button>
-              <button class="tab-button" type="button" data-tab="release">Release Zip</button>
-              <button class="tab-button" type="button" data-tab="cli">CLI</button>
-            </div>
-
-            <div class="tab-panel is-active" data-panel="brew">
-              <p>Best for daily use and upgrades.</p>
+          <div class="install-grid">
+            <article class="install-card">
+              <p class="feature-label">HOMEBREW</p>
+              <h3>Best for everyday use</h3>
               <pre><code>brew tap AiPaste/aipaste
 brew install --cask aipaste
 brew upgrade --cask aipaste</code></pre>
-            </div>
+            </article>
 
-            <div class="tab-panel" data-panel="release">
-              <p>Best if you want the packaged app bundle directly from GitHub.</p>
-              <pre><code>Open the Releases page
-Download the latest macOS zip
-Move AiPaste.app into /Applications</code></pre>
-            </div>
+            <article class="install-card">
+              <p class="feature-label">RELEASE ZIP</p>
+              <h3>Best for direct downloads</h3>
+              <pre><code>Open GitHub Releases
+Download the latest zip
+Move AiPaste.app to /Applications</code></pre>
+            </article>
 
-            <div class="tab-panel" data-panel="cli">
-              <p>Best if you want clipboard control in scripts and terminal workflows.</p>
+            <article class="install-card">
+              <p class="feature-label">CLI</p>
+              <h3>Best for scriptable workflows</h3>
               <pre><code>./bin/aipaste help
 ./bin/aipaste list --limit 10
 ./bin/aipaste items paste 1</code></pre>
-            </div>
-          </div>
-        </section>
-
-        <section class="section workflow-section" id="workflow">
-          <div class="workflow-copy">
-            <p class="eyebrow">Workflow</p>
-            <h2>Built for the copy-search-paste loop that actually happens during real work.</h2>
-          </div>
-
-          <div class="workflow-steps">
-            <article>
-              <span>Capture</span>
-              <h3>Copy naturally</h3>
-              <p>AiPaste listens in the background and stores recent text clips without asking you to change your behavior.</p>
-            </article>
-            <article>
-              <span>Filter</span>
-              <h3>Search by memory, not perfection</h3>
-              <p>Use text search, source context, and group structure to get back to the right clip quickly.</p>
-            </article>
-            <article>
-              <span>Reuse</span>
-              <h3>Paste or automate</h3>
-              <p>Copy it again, paste it into the previous app, or drive the same actions from the bundled CLI.</p>
             </article>
           </div>
         </section>
 
-        <section class="section quote-section">
-          <blockquote>
-            “A clipboard manager should feel like a quiet extension of the operating system, not a mini browser on top
-            of it.”
-          </blockquote>
-          <p>AiPaste is built around that premise.</p>
+        <section class="faq-section" id="faq">
+          <div class="section-heading">
+            <p class="eyebrow">FAQ</p>
+            <h2>Built for native Mac workflows.</h2>
+          </div>
+
+          <div class="faq-grid">
+            <article>
+              <h3>Does it store data locally?</h3>
+              <p>Yes. AiPaste is designed as a local-first clipboard tool for macOS.</p>
+            </article>
+            <article>
+              <h3>Can I automate it?</h3>
+              <p>Yes. The bundled CLI covers panel actions, item actions, groups, ignore rules, and configuration.</p>
+            </article>
+            <article>
+              <h3>Can it paste back into another app?</h3>
+              <p>Yes, with macOS Accessibility permission enabled for paste-to-app actions.</p>
+            </article>
+            <article>
+              <h3>How do I preview this site locally?</h3>
+              <p>Run <code>./scripts/serve_website.sh</code> and open the local address it prints.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="cta-section">
+          <p class="eyebrow">AiPaste</p>
+          <h2>Do more with what you already copied.</h2>
+          <p>
+            A native clipboard manager for people who move fast and still want their desktop to feel calm.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="https://github.com/AiPaste/AiPaste/releases" target="_blank" rel="noreferrer">
+              Download Release
+            </a>
+            <a class="button button-secondary" href="https://github.com/AiPaste/AiPaste" target="_blank" rel="noreferrer">
+              Star on GitHub
+            </a>
+          </div>
         </section>
       </main>
 
       <footer class="site-footer">
-        <div>
-          <strong>AiPaste</strong>
-          <p>Native macOS clipboard manager built with SwiftUI.</p>
+        <div class="footer-brand">
+          <img src="assets/app-icon.png" alt="" />
+          <div>
+            <strong>AiPaste</strong>
+            <p>Native macOS clipboard manager built with SwiftUI.</p>
+          </div>
         </div>
+
         <div class="footer-links">
           <a href="https://github.com/AiPaste/AiPaste" target="_blank" rel="noreferrer">Repository</a>
           <a href="https://github.com/AiPaste/AiPaste/releases" target="_blank" rel="noreferrer">Releases</a>
           <a href="https://github.com/AiPaste/homebrew-aipaste" target="_blank" rel="noreferrer">Homebrew Tap</a>
         </div>
+
         <p class="footer-meta">Copyright <span id="year"></span> AiPaste</p>
       </footer>
     </div>
