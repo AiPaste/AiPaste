@@ -113,6 +113,12 @@ pre code {
   backdrop-filter: blur(16px);
 }
 
+.header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -205,6 +211,36 @@ pre code {
   font-size: 0.82rem;
 }
 
+.lang-switch {
+  display: inline-flex;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.64);
+  box-shadow: 0 12px 30px rgba(31, 41, 55, 0.04);
+}
+
+.lang-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.lang-button.is-active {
+  background: var(--text);
+  color: #f8fbff;
+}
+
 .hero {
   padding: 40px 0 44px;
   text-align: center;
@@ -243,15 +279,31 @@ pre code {
 }
 
 .hero-headline {
+  position: relative;
+  left: 50%;
   display: grid;
   gap: 0.06em;
-  max-width: 14ch;
-  margin: 0 auto;
+  width: fit-content;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  padding-top: 22px;
+  padding-bottom: 28px;
   font-size: clamp(3.4rem, 6.8vw, 5.9rem);
+  justify-items: center;
+  transform: translateX(-50%);
 }
 
 .hero-headline span {
   display: block;
+  width: max-content;
+  margin-inline: auto;
+  text-align: center;
+  white-space: nowrap;
+}
+
+html[lang="zh-CN"] .hero-headline {
+  font-size: clamp(2.8rem, 6vw, 5.2rem);
 }
 
 .hero-lead {
@@ -945,6 +997,10 @@ pre code {
     justify-self: start;
   }
 
+  .header-actions {
+    justify-self: start;
+  }
+
   .hero-stage {
     padding-inline: 0;
   }
@@ -1015,8 +1071,25 @@ pre code {
   }
 
   .hero-headline {
+    left: auto;
+    width: auto;
     font-size: clamp(3.1rem, 17vw, 4.9rem);
     max-width: 10ch;
+    margin-left: auto;
+    margin-right: auto;
+    padding-top: 14px;
+    padding-bottom: 18px;
+    transform: none;
+  }
+
+  .hero-headline span {
+    width: auto;
+    white-space: normal;
+  }
+
+  html[lang="zh-CN"] .hero-headline {
+    max-width: 9ch;
+    font-size: clamp(2.6rem, 13vw, 4.2rem);
   }
 
   .hero-stage {
