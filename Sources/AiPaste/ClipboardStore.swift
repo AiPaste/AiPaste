@@ -2,6 +2,7 @@ import AppKit
 import ApplicationServices
 import Combine
 import Foundation
+import OSLog
 import PDFKit
 import UniformTypeIdentifiers
 
@@ -61,6 +62,11 @@ struct ColorValue: Hashable {
     let blue: Double
 }
 
+struct ClipboardWriteResult {
+    let success: Bool
+    let recommendedPasteDelay: TimeInterval
+}
+
 @MainActor
 final class ClipboardStore: ObservableObject {
     private struct TextCaptureContext {
@@ -92,6 +98,7 @@ final class ClipboardStore: ObservableObject {
     private let deviceID = Host.current().localizedName ?? UUID().uuidString
     private var isApplyingCloudState = false
     private let monitoringEnabled: Bool
+    private let logger = Logger(subsystem: "AiPaste", category: "ClipboardStore")
 
     init(enableMonitoring: Bool = true) {
         monitoringEnabled = enableMonitoring
@@ -207,28 +214,42 @@ final class ClipboardStore: ObservableObject {
         }
     }
 
-    func copy(_ item: ClipboardItem) {
-        promote(item)
-        pasteboard.clearContents()
+    @discardableResult
+    func copy(_ item: ClipboardItem) -> ClipboardWriteResult {
+        let payloadSize = payloadSize(for: item)
+        let recommendedPasteDelay = recommendedPasteDelay(forPayloadSize: payloadSize)
 
-        switch item.kind {
-        case .text, .code, .link:
-            if let textContent = item.textContent {
-                pasteboard.setString(textContent, forType: .string)
+        for attempt in 1...3 {
+            let baselineChangeCount = pasteboard.changeCount
+            guard performPasteboardWrite(for: item) else {
+                logger.error("pasteboard write attempt \(attempt, privacy: .public) failed for item \(item.id.uuidString, privacy: .public)")
+                continue
             }
-        case .pdf:
-            if let pdfData = item.pdfData {
-                pasteboard.setData(pdfData, forType: .pdf)
+
+            if waitForPasteboardWrite(of: item, after: baselineChangeCount, payloadSize: payloadSize) {
+                promote(item)
+                lastChangeCount = pasteboard.changeCount
+                lastCopiedItemID = item.id
+                persist()
+                logger.debug("pasteboard write succeeded for item \(item.id.uuidString, privacy: .public) size=\(payloadSize, privacy: .public)")
+                return ClipboardWriteResult(success: true, recommendedPasteDelay: recommendedPasteDelay)
             }
-        case .image:
-            if let image = item.image {
-                pasteboard.writeObjects([image])
-            }
+
+            logger.error("pasteboard write verification attempt \(attempt, privacy: .public) timed out for item \(item.id.uuidString, privacy: .public)")
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.04 * Double(attempt)))
         }
 
-        lastChangeCount = pasteboard.changeCount
-        lastCopiedItemID = item.id
-        persist()
+        return ClipboardWriteResult(success: false, recommendedPasteDelay: recommendedPasteDelay)
+    }
+
+    @discardableResult
+    func copyTextToPasteboard(_ text: String) -> Bool {
+        let baselineChangeCount = pasteboard.changeCount
+        let result = writeTextPayload(text)
+        if !result {
+            logger.error("copyTextToPasteboard failed for payload size=\(text.utf8.count, privacy: .public)")
+        }
+        return result && waitForTextPasteboardWrite(text, after: baselineChangeCount, payloadSize: text.utf8.count)
     }
 
     func togglePin(_ item: ClipboardItem) {
@@ -501,6 +522,171 @@ final class ClipboardStore: ObservableObject {
         guard let pngData = image.pngData else { return nil }
         let size = PixelSize(width: Int(image.size.width), height: Int(image.size.height))
         return (pngData, size)
+    }
+
+    private func payloadSize(for item: ClipboardItem) -> Int {
+        switch item.kind {
+        case .text, .code, .link:
+            return item.textContent?.utf8.count ?? 0
+        case .pdf:
+            return item.pdfData?.count ?? 0
+        case .image:
+            return item.imagePNGData?.count ?? 0
+        }
+    }
+
+    private func recommendedPasteDelay(forPayloadSize payloadSize: Int) -> TimeInterval {
+        switch payloadSize {
+        case 0..<128_000:
+            return 0.08
+        case 128_000..<512_000:
+            return 0.14
+        case 512_000..<2_000_000:
+            return 0.22
+        case 2_000_000..<8_000_000:
+            return 0.35
+        default:
+            return 0.55
+        }
+    }
+
+    private func performPasteboardWrite(for item: ClipboardItem) -> Bool {
+        switch item.kind {
+        case .text, .code, .link:
+            guard let textContent = item.textContent else { return false }
+            return writeTextPayload(textContent)
+        case .pdf:
+            guard let pdfData = item.pdfData else { return false }
+            return writeDataPayload(pdfData, forTypes: [.pdf])
+        case .image:
+            guard let pngData = item.imagePNGData else { return false }
+            return writeImagePayload(pngData, image: item.image)
+        }
+    }
+
+    private func writeTextPayload(_ text: String) -> Bool {
+        let item = NSPasteboardItem()
+        var hasRepresentation = false
+
+        if item.setString(text, forType: .string) {
+            hasRepresentation = true
+        }
+
+        let plainTextTypes = preferredPlainTextTypes
+        for type in plainTextTypes {
+            if item.setString(text, forType: type) {
+                hasRepresentation = true
+            }
+        }
+
+        if let utf8Data = text.data(using: .utf8) {
+            if item.setData(utf8Data, forType: NSPasteboard.PasteboardType(UTType.utf8PlainText.identifier)) {
+                hasRepresentation = true
+            }
+            if item.setData(utf8Data, forType: NSPasteboard.PasteboardType(UTType.plainText.identifier)) {
+                hasRepresentation = true
+            }
+        }
+
+        if let utf16Data = text.data(using: .utf16) {
+            if item.setData(utf16Data, forType: NSPasteboard.PasteboardType(UTType.utf16ExternalPlainText.identifier)) {
+                hasRepresentation = true
+            }
+        }
+
+        guard hasRepresentation else { return false }
+        pasteboard.clearContents()
+        return pasteboard.writeObjects([item])
+    }
+
+    private func writeDataPayload(_ data: Data, forTypes types: [NSPasteboard.PasteboardType]) -> Bool {
+        let item = NSPasteboardItem()
+        var hasRepresentation = false
+
+        for type in types {
+            if item.setData(data, forType: type) {
+                hasRepresentation = true
+            }
+        }
+
+        guard hasRepresentation else { return false }
+        pasteboard.clearContents()
+        return pasteboard.writeObjects([item])
+    }
+
+    private func writeImagePayload(_ pngData: Data, image: NSImage?) -> Bool {
+        let item = NSPasteboardItem()
+        var hasRepresentation = false
+
+        if item.setData(pngData, forType: NSPasteboard.PasteboardType(UTType.png.identifier)) {
+            hasRepresentation = true
+        }
+
+        if let tiffData = image?.tiffRepresentation,
+           item.setData(tiffData, forType: .tiff) {
+            hasRepresentation = true
+        }
+
+        guard hasRepresentation else { return false }
+        pasteboard.clearContents()
+        return pasteboard.writeObjects([item])
+    }
+
+    private func waitForPasteboardWrite(of item: ClipboardItem, after baselineChangeCount: Int, payloadSize: Int) -> Bool {
+        let deadline = Date().addingTimeInterval(verificationTimeout(forPayloadSize: payloadSize))
+
+        while Date() < deadline {
+            if pasteboard.changeCount > baselineChangeCount, verifyPasteboardPayload(for: item) {
+                return true
+            }
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.02))
+        }
+
+        return false
+    }
+
+    private func waitForTextPasteboardWrite(_ text: String, after baselineChangeCount: Int, payloadSize: Int) -> Bool {
+        let deadline = Date().addingTimeInterval(verificationTimeout(forPayloadSize: payloadSize))
+
+        while Date() < deadline {
+            if pasteboard.changeCount > baselineChangeCount,
+               let pastedText = currentTextPayload(),
+               pastedText == text {
+                return true
+            }
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.02))
+        }
+
+        return false
+    }
+
+    private func verifyPasteboardPayload(for item: ClipboardItem) -> Bool {
+        switch item.kind {
+        case .text, .code, .link:
+            guard let textContent = item.textContent else { return false }
+            return currentTextPayload() == textContent
+        case .pdf:
+            guard let pdfData = item.pdfData else { return false }
+            return pasteboard.data(forType: .pdf) == pdfData
+        case .image:
+            guard let pngData = item.imagePNGData else { return false }
+            return pasteboard.data(forType: NSPasteboard.PasteboardType(UTType.png.identifier)) == pngData
+        }
+    }
+
+    private func verificationTimeout(forPayloadSize payloadSize: Int) -> TimeInterval {
+        switch payloadSize {
+        case 0..<128_000:
+            return 0.20
+        case 128_000..<512_000:
+            return 0.35
+        case 512_000..<2_000_000:
+            return 0.60
+        case 2_000_000..<8_000_000:
+            return 1.00
+        default:
+            return 1.60
+        }
     }
 
     private func currentTextPayload() -> String? {

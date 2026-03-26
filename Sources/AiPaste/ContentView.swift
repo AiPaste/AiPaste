@@ -415,9 +415,7 @@ struct ContentView: View {
             .joined(separator: "\n\n")
 
         let output = export.isEmpty ? group.title : "# \(group.title)\n\n\(export)"
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(output, forType: .string)
+        _ = store.copyTextToPasteboard(output)
     }
 
     private func deleteGroup(_ group: ClipboardGroup) {

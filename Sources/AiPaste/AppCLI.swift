@@ -370,7 +370,10 @@ private final class CLIRunner {
     }
 
     private func paste(_ item: ClipboardItem) throws {
-        store.copy(item)
+        let copyResult = store.copy(item)
+        guard copyResult.success else {
+            throw CLIError("Failed to copy item \(item.id.uuidString) to the clipboard.")
+        }
         let destination = PasteDestinationMode(rawValue: defaults.string(forKey: AppPreferences.pasteDestination) ?? PasteDestinationMode.activeApp.rawValue) ?? .activeApp
 
         guard destination == .activeApp else {
@@ -396,7 +399,7 @@ private final class CLIRunner {
         let keyCode = CGKeyCode(kVK_ANSI_V)
 
         targetApplication.activate()
-        usleep(120_000)
+        usleep(useconds_t(max(copyResult.recommendedPasteDelay, 0.12) * 1_000_000))
 
         let keyDown = CGEvent(keyboardEventSource: eventSource, virtualKey: keyCode, keyDown: true)
         keyDown?.flags = flags

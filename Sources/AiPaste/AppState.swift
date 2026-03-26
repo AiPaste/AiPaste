@@ -152,7 +152,12 @@ final class AppState: ObservableObject {
     func paste(_ item: ClipboardItem) {
         selectedItemID = item.id
         logger.debug("paste requested for item \(item.id.uuidString, privacy: .public) kind=\(item.kind.rawValue, privacy: .public)")
-        store.copy(item)
+        let copyResult = store.copy(item)
+        guard copyResult.success else {
+            logger.error("paste aborted because clipboard write failed for item \(item.id.uuidString, privacy: .public)")
+            SoundEffectPlayer.shared.play(.error)
+            return
+        }
         let pasteDestination = preferredPasteDestination()
         let targetApplication = lastTargetApplication
         pasteAutomationAvailable = ensureAccessibilityPermission(prompt: true)
@@ -179,7 +184,7 @@ final class AppState: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
             self.logger.debug("activating target app \(targetApplication.localizedName ?? "unknown", privacy: .public)")
             targetApplication.activate()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + copyResult.recommendedPasteDelay) {
                 let shortcutMode = self.preferredPasteShortcutMode(for: item)
                 self.logger.debug("sending paste shortcut to active app mode=\(String(describing: shortcutMode), privacy: .public)")
                 self.sendPasteShortcut(mode: shortcutMode)
