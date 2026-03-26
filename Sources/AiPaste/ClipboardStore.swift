@@ -2,6 +2,7 @@ import AppKit
 import Combine
 import Foundation
 import PDFKit
+import UniformTypeIdentifiers
 
 enum GroupColorToken: String, Codable, CaseIterable, Hashable {
     case red
@@ -72,7 +73,12 @@ final class ClipboardStore: ObservableObject {
     private let pasteboard = NSPasteboard.general
     private var lastChangeCount: Int
     private var timer: Timer?
+    private var pendingChangeCount: Int?
+    private var pendingCaptureAttempts = 0
+    private var pendingRetryWorkItem: DispatchWorkItem?
     private let maxItems = 80
+    private let maxPendingCaptureAttempts = 6
+    private let pendingRetryDelay: TimeInterval = 0.12
     private let persistenceURL: URL
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
@@ -189,8 +195,9 @@ final class ClipboardStore: ObservableObject {
     func captureCurrentClipboard() {
         let previous = lastChangeCount
         lastChangeCount = -1
+        clearPendingCaptureRetry()
         captureIfNeeded()
-        if lastCopiedItemID == nil {
+        if pasteboard.changeCount != lastChangeCount {
             lastChangeCount = previous
         }
     }
@@ -276,9 +283,34 @@ final class ClipboardStore: ObservableObject {
     }
 
     private func captureIfNeeded() {
-        guard pasteboard.changeCount != lastChangeCount else { return }
-        lastChangeCount = pasteboard.changeCount
+        let currentChangeCount = pasteboard.changeCount
+        guard currentChangeCount != lastChangeCount else {
+            clearPendingCaptureRetry()
+            return
+        }
 
+        if pendingChangeCount != currentChangeCount {
+            pendingChangeCount = currentChangeCount
+            pendingCaptureAttempts = 0
+        }
+
+        guard performCaptureAttempt() else {
+            pendingCaptureAttempts += 1
+            guard pendingCaptureAttempts < maxPendingCaptureAttempts else {
+                lastChangeCount = currentChangeCount
+                clearPendingCaptureRetry()
+                return
+            }
+
+            schedulePendingCaptureRetry()
+            return
+        }
+
+        lastChangeCount = currentChangeCount
+        clearPendingCaptureRetry()
+    }
+
+    private func performCaptureAttempt() -> Bool {
         let app = NSWorkspace.shared.frontmostApplication
         let appName = app?.localizedName ?? "Clipboard"
         let bundleIdentifier = app?.bundleIdentifier
@@ -286,7 +318,7 @@ final class ClipboardStore: ObservableObject {
         let privacy = PrivacySettingsStore.shared
 
         if privacy.isIgnored(bundleIdentifier: bundleIdentifier) {
-            return
+            return true
         }
 
         if let pdfPayload = currentPDFPayload() {
@@ -301,7 +333,7 @@ final class ClipboardStore: ObservableObject {
             )
             SoundEffectPlayer.shared.play(.capture)
             persist()
-            return
+            return true
         }
 
         if let imagePayload = currentImagePayload() {
@@ -314,14 +346,14 @@ final class ClipboardStore: ObservableObject {
             )
             SoundEffectPlayer.shared.play(.capture)
             persist()
-            return
+            return true
         }
 
-        guard let rawString = pasteboard.string(forType: .string) else { return }
+        guard let rawString = currentTextPayload() else { return false }
         let normalized = rawString.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalized.isEmpty else { return }
+        guard !normalized.isEmpty else { return true }
         if shouldIgnoreTextCapture(normalized, privacy: privacy) {
-            return
+            return true
         }
         upsertTextItem(
             normalized,
@@ -331,6 +363,7 @@ final class ClipboardStore: ObservableObject {
         )
         SoundEffectPlayer.shared.play(.capture)
         persist()
+        return true
     }
 
     private func upsertTextItem(_ text: String, groupID: String?, appName: String, bundleIdentifier: String?) {
@@ -451,6 +484,108 @@ final class ClipboardStore: ObservableObject {
         guard let pngData = image.pngData else { return nil }
         let size = PixelSize(width: Int(image.size.width), height: Int(image.size.height))
         return (pngData, size)
+    }
+
+    private func currentTextPayload() -> String? {
+        if let string = pasteboard.string(forType: .string), !string.isEmpty {
+            return string
+        }
+
+        for type in preferredPlainTextTypes {
+            if let string = pasteboard.string(forType: type), !string.isEmpty {
+                return string
+            }
+
+            guard let data = pasteboard.data(forType: type),
+                  let decoded = decodePlainTextData(data),
+                  !decoded.isEmpty else {
+                continue
+            }
+            return decoded
+        }
+
+        if let rtfString = attributedString(
+            for: .rtf,
+            documentType: .rtf
+        )?.string,
+           !rtfString.isEmpty {
+            return rtfString
+        }
+
+        if let htmlString = attributedString(
+            for: .html,
+            documentType: .html
+        )?.string,
+           !htmlString.isEmpty {
+            return htmlString
+        }
+
+        return nil
+    }
+
+    private var preferredPlainTextTypes: [NSPasteboard.PasteboardType] {
+        [
+            NSPasteboard.PasteboardType(UTType.utf8PlainText.identifier),
+            NSPasteboard.PasteboardType(UTType.utf16ExternalPlainText.identifier),
+            NSPasteboard.PasteboardType(UTType.plainText.identifier),
+            NSPasteboard.PasteboardType(UTType.text.identifier)
+        ]
+    }
+
+    private func decodePlainTextData(_ data: Data) -> String? {
+        let encodings: [String.Encoding] = [
+            .utf8,
+            .utf16,
+            .utf16LittleEndian,
+            .utf16BigEndian,
+            .unicode,
+            .ascii
+        ]
+
+        for encoding in encodings {
+            if let string = String(data: data, encoding: encoding) {
+                return string
+            }
+        }
+
+        return nil
+    }
+
+    private func attributedString(
+        for type: NSPasteboard.PasteboardType,
+        documentType: NSAttributedString.DocumentType
+    ) -> NSAttributedString? {
+        guard let data = pasteboard.data(forType: type) else { return nil }
+
+        return try? NSAttributedString(
+            data: data,
+            options: [
+                .documentType: documentType,
+                .characterEncoding: String.Encoding.utf8.rawValue
+            ],
+            documentAttributes: nil
+        )
+    }
+
+    private func schedulePendingCaptureRetry() {
+        guard pendingRetryWorkItem == nil else { return }
+
+        let workItem = DispatchWorkItem { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.pendingRetryWorkItem = nil
+                self?.captureIfNeeded()
+            }
+        }
+
+        pendingRetryWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + pendingRetryDelay, execute: workItem)
+    }
+
+    private func clearPendingCaptureRetry() {
+        pendingRetryWorkItem?.cancel()
+        pendingRetryWorkItem = nil
+        pendingChangeCount = nil
+        pendingCaptureAttempts = 0
     }
 
     private func currentPDFFileURL() -> URL? {
