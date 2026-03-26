@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import OSLog
 import SwiftUI
 
@@ -235,6 +236,12 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
             onDeleteSelection()
             return true
         }
+        if isLegacyDeleteShortcut(event) {
+            guard !isTextInputEditing else { return false }
+            logger.debug("matched legacy shortcut action deleteSelectedItem")
+            onDeleteSelection()
+            return true
+        }
         if let itemJumpAction = ShortcutAction.itemJumpActions.first(where: { shortcutManager.matches(event, action: $0) }),
            let itemJumpIndex = itemJumpAction.itemJumpIndex {
             logger.debug("matched shortcut action \(itemJumpAction.rawValue, privacy: .public)")
@@ -267,6 +274,11 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
     private var isTextInputEditing: Bool {
         guard let panel else { return false }
         return panel.firstResponder is NSTextView
+    }
+
+    private func isLegacyDeleteShortcut(_ event: NSEvent) -> Bool {
+        event.keyCode == UInt16(kVK_Delete) &&
+        ShortcutDescriptor.normalizedModifiers(event.modifierFlags).isEmpty
     }
 
     private func targetFrame() -> NSRect? {

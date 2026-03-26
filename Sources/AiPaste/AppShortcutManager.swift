@@ -103,7 +103,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
         case .pasteSelectedItem:
             return ShortcutDescriptor(keyCode: UInt16(kVK_Return), modifiers: [])
         case .deleteSelectedItem:
-            return ShortcutDescriptor(keyCode: UInt16(kVK_Delete), modifiers: [])
+            return ShortcutDescriptor(keyCode: UInt16(kVK_Delete), modifiers: [.command])
         case .hidePanel:
             return ShortcutDescriptor(keyCode: UInt16(kVK_Escape), modifiers: [])
         }
@@ -335,9 +335,22 @@ final class AppShortcutManager: ObservableObject {
 
         var loaded: [ShortcutAction: ShortcutDescriptor] = [:]
         for action in ShortcutAction.allCases {
-            loaded[action] = decoded[action.rawValue] ?? action.defaultShortcut
+            let persistedShortcut = decoded[action.rawValue]
+            loaded[action] = migratedShortcut(for: action, persistedShortcut: persistedShortcut) ?? action.defaultShortcut
         }
         shortcuts = loaded
+    }
+
+    private func migratedShortcut(for action: ShortcutAction, persistedShortcut: ShortcutDescriptor?) -> ShortcutDescriptor? {
+        guard let persistedShortcut else { return nil }
+
+        // Upgrade the historical bare Delete binding to the new Command-Delete default.
+        if action == .deleteSelectedItem,
+           persistedShortcut == ShortcutDescriptor(keyCode: UInt16(kVK_Delete), modifiers: []) {
+            return action.defaultShortcut
+        }
+
+        return persistedShortcut
     }
 
     private func persist() {
