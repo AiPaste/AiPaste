@@ -102,6 +102,9 @@ jobs:
       - name: Generate Sparkle appcast
         if: startsWith(github.ref, 'refs/tags/')
         env:
+          VERSION: ${{ steps.version.outputs.value }}
+          ARCHIVE_FILE_PATH: dist/AiPaste-${{ steps.version.outputs.value }}-macOS.zip
+          EXISTING_APPCAST_PATH: docs/appcast.xml
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
           SPARKLE_DOWNLOAD_URL_PREFIX: https://github.com/AiPaste/AiPaste/releases/download/v${{ steps.version.outputs.value }}/
           SPARKLE_RELEASE_LINK: https://github.com/AiPaste/AiPaste/releases/tag/v${{ steps.version.outputs.value }}

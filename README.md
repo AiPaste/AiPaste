@@ -135,6 +135,16 @@ SPARKLE_RELEASE_LINK="https://github.com/AiPaste/AiPaste/releases/tag/v0.1.0" \
 ./scripts/generate_appcast.sh dist docs/appcast.xml
 ```
 
+If `dist/` contains older release archives, point the script at only the current zip so Sparkle does not see duplicate bundle versions:
+
+```bash
+ARCHIVE_FILE_PATH="dist/AiPaste-0.1.0-macOS.zip" \
+EXISTING_APPCAST_PATH="docs/appcast.xml" \
+SPARKLE_PRIVATE_KEY="your-private-key-secret" \
+SPARKLE_DOWNLOAD_URL_PREFIX="https://github.com/AiPaste/AiPaste/releases/download/v0.1.0/" \
+./scripts/generate_appcast.sh dist docs/appcast.xml
+```
+
 GitHub Actions workflow:
 
 - file: `.github/workflows/release-app.yml`
