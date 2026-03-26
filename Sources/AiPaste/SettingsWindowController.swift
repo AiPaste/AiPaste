@@ -26,7 +26,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isOpaque = false
-        window.backgroundColor = NSColor(calibratedWhite: 0.14, alpha: 1)
+        window.backgroundColor = AppThemePalette.windowBackgroundNSColor
         window.sharingType = PrivacySettingsStore.shared.showDuringScreenSharing ? .readOnly : .none
         window.toolbarStyle = .unifiedCompact
         window.contentView = hostingView
@@ -73,11 +73,11 @@ private struct SettingsRootView: View {
         HStack(spacing: 0) {
             sidebar
             Divider()
-                .overlay(Color.white.opacity(0.08))
+                .overlay(AppThemePalette.divider)
             detail
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(red: 0.17, green: 0.17, blue: 0.18))
+        .background(AppThemePalette.windowBackground)
     }
 
     private var sidebar: some View {
@@ -107,14 +107,14 @@ private struct SettingsRootView: View {
 
                 Text(updateManager.updateStatusMessage)
                     .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.50))
+                    .foregroundStyle(AppThemePalette.textFaint)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.bottom, 8)
 
             Text(versionLabel)
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.46))
+                .foregroundStyle(AppThemePalette.textFaint)
                 .padding(.bottom, 2)
 
             Button {
@@ -128,7 +128,7 @@ private struct SettingsRootView: View {
                     Text("Help Center")
                         .font(.system(size: 11, weight: .semibold))
                 }
-                .foregroundStyle(Color.white.opacity(0.92))
+                .foregroundStyle(AppThemePalette.textPrimary)
             }
             .buttonStyle(.plain)
             .padding(.bottom, 5)
@@ -137,7 +137,7 @@ private struct SettingsRootView: View {
         .padding(.top, 16)
         .padding(.bottom, 10)
         .frame(width: 164, alignment: .topLeading)
-        .background(Color(red: 0.12, green: 0.12, blue: 0.13))
+        .background(AppThemePalette.sidebarBackground)
     }
 
     @ViewBuilder
@@ -162,7 +162,7 @@ private struct SettingsRootView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("General")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.96))
+                    .foregroundStyle(AppThemePalette.textPrimary)
 
                 SettingsCard {
                     VStack(spacing: 0) {
@@ -200,10 +200,17 @@ private struct SettingsRootView: View {
                     }
                 }
 
+                SettingsCard {
+                    ThemeSelectionRow(
+                        themeMode: appState.themeManager.themeMode,
+                        onSelect: { appState.setThemeMode($0) }
+                    )
+                }
+
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Paste Items")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Color.white.opacity(0.96))
+                        .foregroundStyle(AppThemePalette.textPrimary)
 
                     SettingsCard {
                         VStack(alignment: .leading, spacing: 0) {
@@ -226,13 +233,13 @@ private struct SettingsRootView: View {
                             }
 
                             Divider()
-                                .overlay(Color.white.opacity(0.08))
+                                .overlay(AppThemePalette.divider)
                                 .padding(.vertical, 9)
 
                             Toggle(isOn: $alwaysPastePlainText) {
                                 Text("Always paste as Plain Text")
                                     .font(.system(size: 10, weight: .semibold))
-                                    .foregroundStyle(Color.white.opacity(0.92))
+                                    .foregroundStyle(AppThemePalette.textPrimary)
                             }
                             .toggleStyle(.checkbox)
                         }
@@ -242,7 +249,7 @@ private struct SettingsRootView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Keep History")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Color.white.opacity(0.96))
+                        .foregroundStyle(AppThemePalette.textPrimary)
 
                     SettingsCard {
                         VStack(alignment: .leading, spacing: 10) {
@@ -264,13 +271,13 @@ private struct SettingsRootView: View {
                                 ForEach(Array(retentionLabels.enumerated()), id: \.offset) { index, label in
                                     Text(label)
                                         .font(.system(size: 9, weight: .semibold))
-                                        .foregroundStyle(Color.white.opacity(index == currentHistoryRetention.rawValue ? 0.92 : 0.78))
+                                        .foregroundStyle(index == currentHistoryRetention.rawValue ? AppThemePalette.textPrimary : AppThemePalette.textSecondary)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
                             }
 
                             Divider()
-                                .overlay(Color.white.opacity(0.08))
+                                .overlay(AppThemePalette.divider)
 
                             HStack {
                                 Spacer(minLength: 0)
@@ -286,23 +293,23 @@ private struct SettingsRootView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Command Line")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Color.white.opacity(0.96))
+                        .foregroundStyle(AppThemePalette.textPrimary)
 
                     SettingsCard {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Install the `aipaste` command into `~/.local/bin` and add that directory to your shell PATH.")
                                 .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(Color.white.opacity(0.72))
+                                .foregroundStyle(AppThemePalette.textSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Label(cliToolInstaller.commandPath, systemImage: "terminal")
                                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                                    .foregroundStyle(Color.white.opacity(0.86))
+                                    .foregroundStyle(AppThemePalette.textPrimary)
 
                                 Label(cliToolInstaller.shellConfigPath, systemImage: "text.alignleft")
                                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                                    .foregroundStyle(Color.white.opacity(0.56))
+                                    .foregroundStyle(AppThemePalette.textMuted)
                             }
 
                             HStack(spacing: 10) {
@@ -319,7 +326,7 @@ private struct SettingsRootView: View {
 
                             Text(cliToolInstaller.statusMessage)
                                 .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(cliToolInstaller.isInstalled ? Color.white.opacity(0.62) : Color.white.opacity(0.54))
+                                .foregroundStyle(cliToolInstaller.isInstalled ? AppThemePalette.textTertiary : AppThemePalette.textMuted)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
@@ -336,12 +343,12 @@ private struct SettingsRootView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Shortcuts")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.96))
+                    .foregroundStyle(AppThemePalette.textPrimary)
 
                 SettingsCard {
                     Text("Current shortcuts are listed below. Global shortcuts work from anywhere; panel shortcuts only work while the panel is visible.")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.72))
+                        .foregroundStyle(AppThemePalette.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -386,7 +393,7 @@ private struct SettingsRootView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Privacy")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.96))
+                    .foregroundStyle(AppThemePalette.textPrimary)
 
                 SettingsCard {
                     VStack(spacing: 0) {
@@ -435,18 +442,18 @@ private struct SettingsRootView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Ignore Applications")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Color.white.opacity(0.96))
+                        .foregroundStyle(AppThemePalette.textPrimary)
 
                     Text("Do not save content copied from the applications below.")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.72))
+                        .foregroundStyle(AppThemePalette.textSecondary)
 
                     SettingsCard {
                         VStack(spacing: 0) {
                             if privacyStore.ignoredApplications.isEmpty {
                                 Text("No ignored applications yet.")
                                     .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(Color.white.opacity(0.56))
+                                    .foregroundStyle(AppThemePalette.textMuted)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(.vertical, 12)
                             } else {
@@ -467,13 +474,13 @@ private struct SettingsRootView: View {
 
                                     if index < privacyStore.ignoredApplications.count - 1 {
                                         Divider()
-                                            .overlay(Color.white.opacity(0.08))
+                                            .overlay(AppThemePalette.divider)
                                     }
                                 }
                             }
 
                             Divider()
-                                .overlay(Color.white.opacity(0.08))
+                                .overlay(AppThemePalette.divider)
                                 .padding(.top, 8)
 
                             HStack(spacing: 8) {
@@ -529,7 +536,7 @@ private struct SettingsRootView: View {
                                 .buttonStyle(.plain)
                                 .disabled(selectedIgnoredApplicationID == nil)
                             }
-                            .foregroundStyle(Color.white.opacity(0.84))
+                            .foregroundStyle(AppThemePalette.textPrimary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.top, 8)
                         }
@@ -546,12 +553,12 @@ private struct SettingsRootView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(Color.white.opacity(0.96))
+                .foregroundStyle(AppThemePalette.textPrimary)
 
             SettingsCard {
                 Text(message)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.72))
+                    .foregroundStyle(AppThemePalette.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -617,7 +624,7 @@ private struct SettingsSidebarItem: View {
                 Text(title)
                     .font(.system(size: 11, weight: .semibold))
             }
-            .foregroundStyle(Color.white.opacity(0.94))
+            .foregroundStyle(AppThemePalette.textPrimary)
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
             .background(
@@ -652,10 +659,10 @@ private struct PrivacyToggleRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.92))
+                        .foregroundStyle(AppThemePalette.textPrimary)
                     Text(subtitle)
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.62))
+                        .foregroundStyle(AppThemePalette.textTertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -670,7 +677,7 @@ private struct PrivacyToggleRow: View {
 
             if showsDivider {
                 Divider()
-                    .overlay(Color.white.opacity(0.08))
+                    .overlay(AppThemePalette.divider)
             }
         }
     }
@@ -693,29 +700,29 @@ private struct IgnoredApplicationRow: View {
                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             } else {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(Color.white.opacity(0.10))
+                    .fill(AppThemePalette.controlSurface)
                     .frame(width: 24, height: 24)
                     .overlay(
                         Image(systemName: "app")
                             .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(Color.white.opacity(0.72))
+                            .foregroundStyle(AppThemePalette.textSecondary)
                     )
             }
 
             Text(application.name)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.92))
+                .foregroundStyle(AppThemePalette.textPrimary)
 
             Spacer(minLength: 0)
 
             Button(action: onRemove) {
                 Image(systemName: "trash")
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.70))
+                    .foregroundStyle(AppThemePalette.textSecondary)
                     .frame(width: 20, height: 20)
                     .background(
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.white.opacity(0.06))
+                            .fill(AppThemePalette.controlSurface)
                     )
             }
             .buttonStyle(.plain)
@@ -724,7 +731,7 @@ private struct IgnoredApplicationRow: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isSelected ? Color.white.opacity(0.08) : .clear)
+                .fill(isSelected ? AppThemePalette.selectedSurface : .clear)
         )
         .contentShape(Rectangle())
         .onTapGesture(perform: action)
@@ -741,7 +748,7 @@ private struct ShortcutSectionCard: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.86))
+                .foregroundStyle(AppThemePalette.textPrimary)
 
             SettingsCard {
                 VStack(spacing: 0) {
@@ -762,7 +769,7 @@ private struct ShortcutSectionCard: View {
 
                         if index < actions.count - 1 {
                             Divider()
-                                .overlay(Color.white.opacity(0.08))
+                                .overlay(AppThemePalette.divider)
                         }
                     }
                 }
@@ -782,7 +789,7 @@ private struct ShortcutRow: View {
         HStack(spacing: 12) {
             Text(action.title)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.92))
+                .foregroundStyle(AppThemePalette.textPrimary)
 
             Spacer(minLength: 0)
 
@@ -791,15 +798,15 @@ private struct ShortcutRow: View {
                     ForEach(displayTokens, id: \.self) { key in
                         Text(key)
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(Color.white.opacity(0.92))
+                            .foregroundStyle(AppThemePalette.textPrimary)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(
                                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(Color.white.opacity(0.08))
+                                    .fill(AppThemePalette.controlSurface)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                            .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+                                            .strokeBorder(AppThemePalette.controlBorder, lineWidth: 1)
                                     )
                             )
                     }
@@ -811,7 +818,7 @@ private struct ShortcutRow: View {
             Button(action: onReset) {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.72))
+                    .foregroundStyle(AppThemePalette.textSecondary)
                     .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
@@ -872,10 +879,10 @@ private struct SettingsCard<Content: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white.opacity(0.05))
+                .fill(AppThemePalette.cardSurface)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                        .strokeBorder(AppThemePalette.cardBorder, lineWidth: 1)
                 )
         )
     }
@@ -892,14 +899,14 @@ private struct SettingsToggleRow: View {
             HStack {
                 Text(title)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.92))
+                    .foregroundStyle(AppThemePalette.textPrimary)
 
                 Spacer(minLength: 0)
 
                 if let trailingText {
                     Text(trailingText)
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.52))
+                        .foregroundStyle(AppThemePalette.textMuted)
                         .padding(.trailing, 8)
                 }
 
@@ -912,8 +919,97 @@ private struct SettingsToggleRow: View {
 
             if showsDivider {
                 Divider()
-                    .overlay(Color.white.opacity(0.08))
+                    .overlay(AppThemePalette.divider)
             }
+        }
+    }
+}
+
+private struct ThemeSelectionRow: View {
+    let themeMode: AppThemeMode
+    let onSelect: (AppThemeMode) -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 18) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Theme")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppThemePalette.textPrimary)
+
+                Text("Use light, dark, or match your system")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(AppThemePalette.textSecondary)
+            }
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 4) {
+                ForEach(AppThemeMode.allCases) { mode in
+                    ThemeModeChip(
+                        mode: mode,
+                        isSelected: themeMode == mode,
+                        action: { onSelect(mode) }
+                    )
+                }
+            }
+            .padding(4)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(AppThemePalette.segmentedBackground)
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct ThemeModeChip: View {
+    let mode: AppThemeMode
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                HStack(spacing: 10) {
+                    Image(systemName: iconName)
+                        .font(.system(size: 13, weight: .medium))
+                    Text(modeLabel)
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundStyle(isSelected ? AppThemePalette.textPrimary : AppThemePalette.textSecondary)
+                .padding(.horizontal, 16)
+                .frame(height: 40)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(isSelected ? AppThemePalette.segmentedSelectedBackground : Color.clear)
+                )
+            }
+            .padding(6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(-6)
+    }
+
+    private var modeLabel: String {
+        switch mode {
+        case .system:
+            return "System"
+        case .dark:
+            return "Dark"
+        case .light:
+            return "Light"
+        }
+    }
+
+    private var iconName: String {
+        switch mode {
+        case .light:
+            return "sun.max"
+        case .dark:
+            return "moon"
+        case .system:
+            return "laptopcomputer"
         }
     }
 }
@@ -930,11 +1026,11 @@ private struct PasteDestinationOption: View {
             HStack(alignment: .top, spacing: 10) {
                 ZStack {
                     Circle()
-                        .fill(isSelected ? Color(red: 0.16, green: 0.48, blue: 0.94) : Color.white.opacity(0.10))
+                        .fill(isSelected ? Color(red: 0.16, green: 0.48, blue: 0.94) : AppThemePalette.controlSurface)
                         .frame(width: 18, height: 18)
 
                     Circle()
-                        .fill(Color.white.opacity(0.92))
+                        .fill(AppThemePalette.selectionDot)
                         .frame(width: isSelected ? 5 : 0, height: isSelected ? 5 : 0)
                 }
                 .padding(.top, 1)
@@ -942,10 +1038,10 @@ private struct PasteDestinationOption: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.92))
+                        .foregroundStyle(AppThemePalette.textPrimary)
                     Text(subtitle)
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.58))
+                        .foregroundStyle(AppThemePalette.textMuted)
                         .multilineTextAlignment(.leading)
                 }
 
@@ -992,12 +1088,12 @@ private struct SettingsSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(Color.white.opacity(0.92))
+            .foregroundStyle(AppThemePalette.textPrimary)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.white.opacity(configuration.isPressed ? 0.14 : 0.09))
+                    .fill(configuration.isPressed ? AppThemePalette.selectedSurface : AppThemePalette.controlSurface)
             )
     }
 }

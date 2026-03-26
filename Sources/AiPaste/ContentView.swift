@@ -104,8 +104,8 @@ struct ContentView: View {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color(red: 0.10, green: 0.10, blue: 0.12),
-                        Color(red: 0.12, green: 0.13, blue: 0.18)
+                        AppThemePalette.panelShellStart,
+                        AppThemePalette.panelShellEnd
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -113,13 +113,13 @@ struct ContentView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+                    .strokeBorder(AppThemePalette.panelShellStroke, lineWidth: 1)
             )
             .overlay(alignment: .top) {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .strokeBorder(
                         LinearGradient(
-                            colors: [Color.white.opacity(0.14), Color.clear],
+                            colors: [AppThemePalette.panelShellHighlight, Color.clear],
                             startPoint: .top,
                             endPoint: .bottom
                         ),
@@ -186,7 +186,7 @@ struct ContentView: View {
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 15, weight: .regular))
-                    .foregroundStyle(Color.white.opacity(0.88))
+                    .foregroundStyle(AppThemePalette.textPrimary)
             }
             .buttonStyle(.plain)
         }
@@ -237,7 +237,7 @@ struct ContentView: View {
             } label: {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.82))
+                    .foregroundStyle(AppThemePalette.textSecondary)
                     .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
@@ -249,12 +249,12 @@ struct ContentView: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.72))
+                .foregroundStyle(AppThemePalette.textSecondary)
 
             TextField("Search", text: $store.searchText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.92))
+                .foregroundStyle(AppThemePalette.textPrimary)
                 .focused($isSearchFocused)
                 .onSubmit {
                     appState.pasteSelectedItem()
@@ -266,7 +266,7 @@ struct ContentView: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.46))
+                        .foregroundStyle(AppThemePalette.textFaint)
                 }
                 .buttonStyle(.plain)
             }
@@ -275,10 +275,10 @@ struct ContentView: View {
         .frame(width: 156, height: 32)
         .background(
             Capsule(style: .continuous)
-                .fill(Color.white.opacity(0.05))
+                .fill(AppThemePalette.cardSurface)
                 .overlay(
                     Capsule(style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                        .strokeBorder(AppThemePalette.cardBorder, lineWidth: 1)
                 )
         )
         .onAppear {
@@ -450,7 +450,7 @@ private struct ClipboardCard: View {
                 cardBody
             }
             .frame(width: 248, height: 252)
-            .background(Color(red: 0.08, green: 0.08, blue: 0.09))
+            .background(AppThemePalette.panelCardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
@@ -592,7 +592,7 @@ private struct ClipboardCard: View {
         VStack(alignment: .leading, spacing: 14) {
             Text(item.textPreview)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.92))
+                .foregroundStyle(AppThemePalette.textPrimary)
                 .lineSpacing(2)
                 .multilineTextAlignment(.leading)
                 .lineLimit(6)
@@ -600,14 +600,14 @@ private struct ClipboardCard: View {
 
             Text(item.footerLabel)
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.54))
+                .foregroundStyle(AppThemePalette.textMuted)
                 .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(red: 0.08, green: 0.08, blue: 0.09))
+        .background(AppThemePalette.panelCardBackground)
     }
 
     private var linkBody: some View {
@@ -635,19 +635,19 @@ private struct ClipboardCard: View {
 
                     Text(item.linkHost ?? "Link")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.94))
+                        .foregroundStyle(AppThemePalette.textPrimary)
                         .lineLimit(1)
                 }
 
                 Text(linkPrimaryText)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.92))
+                    .foregroundStyle(AppThemePalette.textPrimary)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 Text(item.linkDisplayText)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.74))
+                    .foregroundStyle(AppThemePalette.textSecondary)
                     .lineSpacing(2)
                     .lineLimit(3)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -655,14 +655,14 @@ private struct ClipboardCard: View {
 
             Text(item.footerLabel)
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.54))
+                .foregroundStyle(AppThemePalette.textMuted)
                 .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(red: 0.08, green: 0.08, blue: 0.09))
+        .background(AppThemePalette.panelCardBackground)
         .onAppear {
             if privacyStore.generateLinkPreviews, let url = item.resolvedURL {
                 linkPreviewStore.fetchIfNeeded(for: url)
@@ -679,13 +679,13 @@ private struct ClipboardCard: View {
 
                 Text(codeLanguageHint)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.84))
+                    .foregroundStyle(AppThemePalette.textSecondary)
                     .lineLimit(1)
             }
 
             Text(item.codePreview)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(Color.white.opacity(0.92))
+                .foregroundStyle(AppThemePalette.textPrimary)
                 .lineSpacing(2)
                 .multilineTextAlignment(.leading)
                 .lineLimit(7)
@@ -694,23 +694,23 @@ private struct ClipboardCard: View {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color(red: 0.05, green: 0.07, blue: 0.11))
+                        .fill(AppThemePalette.codeBlockBackground)
                         .overlay(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
+                                .strokeBorder(AppThemePalette.codeBlockBorder, lineWidth: 1)
                         )
                 )
 
             Text(item.footerLabel)
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.54))
+                .foregroundStyle(AppThemePalette.textMuted)
                 .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(red: 0.08, green: 0.08, blue: 0.09))
+        .background(AppThemePalette.panelCardBackground)
     }
 
     private var imageBody: some View {
@@ -741,12 +741,12 @@ private struct ClipboardCard: View {
 
             Text(item.footerLabel)
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.54))
+                .foregroundStyle(AppThemePalette.textMuted)
                 .frame(maxWidth: .infinity)
                 .padding(.top, 8)
                 .padding(.bottom, 12)
         }
-        .background(Color(red: 0.08, green: 0.08, blue: 0.09))
+        .background(AppThemePalette.panelCardBackground)
     }
 
     private var pdfBody: some View {
@@ -798,7 +798,7 @@ private struct ClipboardCard: View {
                 if let pdfFileName = item.pdfFileName, !pdfFileName.isEmpty {
                     Text(pdfFileName)
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.80))
+                        .foregroundStyle(AppThemePalette.textSecondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
                         .frame(maxWidth: .infinity)
@@ -806,21 +806,21 @@ private struct ClipboardCard: View {
 
                 Text(item.footerLabel)
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.54))
+                    .foregroundStyle(AppThemePalette.textMuted)
                     .frame(maxWidth: .infinity)
             }
             .padding(.top, 8)
             .padding(.bottom, 12)
             .padding(.horizontal, 14)
         }
-        .background(Color(red: 0.08, green: 0.08, blue: 0.09))
+        .background(AppThemePalette.panelCardBackground)
     }
 
     private var borderColor: Color {
         if isActiveItem {
             return Color(red: 0.18, green: 0.60, blue: 1.0)
         }
-        return Color.white.opacity(0.05)
+        return AppThemePalette.cardBorder
     }
 
     private var borderWidth: CGFloat {
@@ -881,8 +881,8 @@ private struct LinkPreviewBanner: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.08),
-                            Color.white.opacity(0.03)
+                            AppThemePalette.controlSurface,
+                            AppThemePalette.cardSurface
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -909,8 +909,8 @@ private struct LinkPreviewBanner: View {
             } else {
                 LinearGradient(
                     colors: [
-                        Color(red: 0.13, green: 0.17, blue: 0.23),
-                        Color(red: 0.09, green: 0.11, blue: 0.16)
+                        AppThemePalette.linkPreviewStart,
+                        AppThemePalette.linkPreviewEnd
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -927,13 +927,13 @@ private struct LinkPreviewBanner: View {
                 } else {
                     Image(systemName: "link")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(0.88))
+                        .foregroundStyle(AppThemePalette.textPrimary)
                         .frame(width: 18, height: 18)
                 }
 
                 Text(host)
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.92))
+                    .foregroundStyle(AppThemePalette.textPrimary)
                     .lineLimit(1)
             }
             .padding(.horizontal, 10)
@@ -943,7 +943,7 @@ private struct LinkPreviewBanner: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                .strokeBorder(AppThemePalette.cardBorder, lineWidth: 1)
         )
     }
 }
@@ -964,7 +964,7 @@ private struct SelectedClipboardChip: View {
                     .font(.system(size: 11, weight: .semibold))
                 Text("\(count)")
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(isSelected ? 0.68 : 0.56))
+                    .foregroundStyle(isSelected ? AppThemePalette.textTertiary : AppThemePalette.textMuted)
             }
         }
     }
@@ -994,7 +994,7 @@ private struct EditableGroupTab: View {
                 TextField("", text: $draftTitle)
                     .textFieldStyle(.plain)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.96))
+                    .foregroundStyle(AppThemePalette.textPrimary)
                     .frame(minWidth: 52, maxWidth: 110)
                     .focused($isFocused)
                     .onSubmit(onSubmit)
@@ -1013,10 +1013,10 @@ private struct EditableGroupTab: View {
             .frame(height: 34)
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.10))
+                    .fill(AppThemePalette.selectedSurface)
                     .overlay(
                         Capsule(style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
+                            .strokeBorder(AppThemePalette.selectedBorder, lineWidth: 1)
                     )
             )
             .zIndex(2)
@@ -1058,7 +1058,7 @@ private struct GroupContextMenuView: View {
             actionRow("trash", "Delete...", onDelete)
 
             Rectangle()
-                .fill(Color.white.opacity(0.10))
+                .fill(AppThemePalette.divider)
                 .frame(height: 1)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
@@ -1075,7 +1075,7 @@ private struct GroupContextMenuView: View {
 
                             if group.colorToken == token {
                                 Circle()
-                                    .strokeBorder(Color.white.opacity(0.88), lineWidth: 2)
+                                    .strokeBorder(AppThemePalette.textPrimary, lineWidth: 2)
                                     .frame(width: 23, height: 23)
                             }
                         }
@@ -1092,8 +1092,8 @@ private struct GroupContextMenuView: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(red: 0.13, green: 0.14, blue: 0.16).opacity(0.97),
-                            Color(red: 0.11, green: 0.12, blue: 0.15).opacity(0.98)
+                            AppThemePalette.contextMenuStart,
+                            AppThemePalette.contextMenuEnd
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -1101,7 +1101,7 @@ private struct GroupContextMenuView: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+                        .strokeBorder(AppThemePalette.selectedBorder, lineWidth: 1)
                 )
         )
         .shadow(color: .black.opacity(0.35), radius: 20, y: 12)
@@ -1117,7 +1117,7 @@ private struct GroupContextMenuView: View {
                     .font(.system(size: 11, weight: .medium))
                 Spacer(minLength: 0)
             }
-            .foregroundStyle(Color.white.opacity(0.92))
+            .foregroundStyle(AppThemePalette.textPrimary)
             .padding(.horizontal, 16)
             .frame(height: 28)
         }
@@ -1149,15 +1149,15 @@ private struct ToolbarChipBody<Content: View>: View {
         HStack(spacing: 8) {
             content
         }
-        .foregroundStyle(Color.white.opacity(isSelected ? 0.96 : 0.74))
+        .foregroundStyle(isSelected ? AppThemePalette.textPrimary : AppThemePalette.textSecondary)
         .padding(.horizontal, 14)
         .frame(height: 34)
         .background(
             Capsule(style: .continuous)
-                .fill(Color.white.opacity(isSelected ? 0.10 : 0.00))
+                .fill(isSelected ? AppThemePalette.selectedSurface : Color.clear)
                 .overlay(
                     Capsule(style: .continuous)
-                        .strokeBorder(Color.white.opacity(isSelected ? 0.16 : 0.00), lineWidth: 1)
+                        .strokeBorder(isSelected ? AppThemePalette.selectedBorder : Color.clear, lineWidth: 1)
                 )
         )
     }
@@ -1214,10 +1214,10 @@ private struct GroupChipContainer<Content: View>: View {
         if compact {
             ZStack {
                 Circle()
-                    .fill(Color.white.opacity(isSelected ? 0.10 : 0.0))
+                    .fill(isSelected ? AppThemePalette.selectedSurface : Color.clear)
                     .overlay(
                         Circle()
-                            .strokeBorder(Color.white.opacity(isSelected ? 0.16 : 0.0), lineWidth: 1)
+                            .strokeBorder(isSelected ? AppThemePalette.selectedBorder : Color.clear, lineWidth: 1)
                     )
                 content
             }
@@ -1285,12 +1285,12 @@ private struct AppIconBadge: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.38), lineWidth: 1)
+                        .strokeBorder(AppThemePalette.cardBorder, lineWidth: 1)
                 )
         } else {
             ZStack {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white.opacity(0.92))
+                    .fill(AppThemePalette.iconFallbackBackground)
                 Image(systemName: item.sourceStyle.icon)
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(item.sourceStyle.accent)
@@ -1318,7 +1318,7 @@ private struct CheckerboardBackground: View {
                     let isDark = (row + column).isMultiple(of: 2)
                     context.fill(
                         Path(rect),
-                        with: .color(isDark ? Color(red: 0.13, green: 0.13, blue: 0.14) : Color(red: 0.17, green: 0.17, blue: 0.18))
+                        with: .color(isDark ? AppThemePalette.checkerboardA : AppThemePalette.checkerboardB)
                     )
                 }
             }

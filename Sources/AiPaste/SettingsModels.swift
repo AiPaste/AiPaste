@@ -83,6 +83,7 @@ enum HistoryRetention: Int, CaseIterable, Identifiable {
 enum AppPreferences {
     static let openAtLogin = "settings.openAtLogin"
     static let runInBackground = "settings.runInBackground"
+    static let themeMode = "settings.themeMode"
     static let iCloudSync = "settings.iCloudSync"
     static let soundEffects = "settings.soundEffects"
     static let showDuringScreenSharing = "settings.showDuringScreenSharing"

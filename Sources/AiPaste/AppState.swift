@@ -16,6 +16,7 @@ final class AppState: ObservableObject {
 
     let store = ClipboardStore()
     let shortcutManager = AppShortcutManager.shared
+    let themeManager = AppThemeManager.shared
     let updateManager = AppUpdateManager.shared
     @Published private(set) var isPanelVisible = false
     @Published private(set) var pasteAutomationAvailable = AXIsProcessTrusted()
@@ -72,6 +73,8 @@ final class AppState: ObservableObject {
         pasteAutomationAvailable = ensureAccessibilityPermission(prompt: false)
         refreshOpenAtLoginStatus()
         runInBackgroundEnabled = UserDefaults.standard.object(forKey: AppPreferences.runInBackground) as? Bool ?? true
+        themeManager.reloadFromDefaults()
+        themeManager.applyAppearance(postNotification: false)
         registerGlobalShortcuts()
         updateManager.configureOnLaunch()
     }
@@ -121,6 +124,11 @@ final class AppState: ObservableObject {
         runInBackgroundEnabled = enabled
         UserDefaults.standard.set(enabled, forKey: AppPreferences.runInBackground)
         evaluateBackgroundPolicy()
+    }
+
+    func setThemeMode(_ mode: AppThemeMode) {
+        logger.debug("setThemeMode requested mode=\(mode.rawValue, privacy: .public)")
+        themeManager.setThemeMode(mode)
     }
 
     func setOpenAtLogin(_ enabled: Bool) {
@@ -399,6 +407,7 @@ final class AppState: ObservableObject {
         let defaults = UserDefaults.standard
         runInBackgroundEnabled = defaults.object(forKey: AppPreferences.runInBackground) as? Bool ?? true
         refreshOpenAtLoginStatus()
+        themeManager.reloadFromDefaults()
         PrivacySettingsStore.shared.reloadFromDefaults()
         updateManager.reloadFromDefaults()
 
