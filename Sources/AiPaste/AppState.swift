@@ -13,6 +13,7 @@ private enum PasteShortcutMode {
 @MainActor
 final class AppState: ObservableObject {
     static let shared = AppState()
+    private static let targetActivationLeadTime: TimeInterval = 0.08
 
     let store = ClipboardStore()
     let shortcutManager = AppShortcutManager.shared
@@ -181,10 +182,14 @@ final class AppState: ObservableObject {
 
         hidePanel()
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.targetActivationLeadTime) {
             self.logger.debug("activating target app \(targetApplication.localizedName ?? "unknown", privacy: .public)")
             targetApplication.activate()
-            DispatchQueue.main.asyncAfter(deadline: .now() + copyResult.recommendedPasteDelay) {
+            FrontmostApplicationWaiter.wait(
+                for: targetApplication,
+                timeout: copyResult.activationTimeout
+            ) { didActivate in
+                self.logger.debug("target app activation state for paste: \(didActivate, privacy: .public)")
                 let shortcutMode = self.preferredPasteShortcutMode(for: item)
                 self.logger.debug("sending paste shortcut to active app mode=\(String(describing: shortcutMode), privacy: .public)")
                 self.sendPasteShortcut(mode: shortcutMode)

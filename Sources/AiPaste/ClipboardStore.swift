@@ -65,12 +65,36 @@ struct ColorValue: Hashable {
 struct ClipboardWriteResult {
     let success: Bool
     let recommendedPasteDelay: TimeInterval
+
+    var activationTimeout: TimeInterval {
+        max(recommendedPasteDelay + 0.25, 0.35)
+    }
 }
 
 @MainActor
 final class ClipboardStore: ObservableObject {
     private struct TextCaptureContext {
         let sourceFileName: String?
+    }
+
+    private struct PasteboardWriteProfile {
+        let recommendedPasteDelay: TimeInterval
+        let verificationTimeout: TimeInterval
+
+        static func resolve(forPayloadSize payloadSize: Int) -> PasteboardWriteProfile {
+            switch payloadSize {
+            case 0..<128_000:
+                return PasteboardWriteProfile(recommendedPasteDelay: 0.08, verificationTimeout: 0.20)
+            case 128_000..<512_000:
+                return PasteboardWriteProfile(recommendedPasteDelay: 0.14, verificationTimeout: 0.35)
+            case 512_000..<2_000_000:
+                return PasteboardWriteProfile(recommendedPasteDelay: 0.22, verificationTimeout: 0.60)
+            case 2_000_000..<8_000_000:
+                return PasteboardWriteProfile(recommendedPasteDelay: 0.35, verificationTimeout: 1.00)
+            default:
+                return PasteboardWriteProfile(recommendedPasteDelay: 0.55, verificationTimeout: 1.60)
+            }
+        }
     }
 
     @Published private(set) var items: [ClipboardItem] = []
@@ -217,7 +241,7 @@ final class ClipboardStore: ObservableObject {
     @discardableResult
     func copy(_ item: ClipboardItem) -> ClipboardWriteResult {
         let payloadSize = payloadSize(for: item)
-        let recommendedPasteDelay = recommendedPasteDelay(forPayloadSize: payloadSize)
+        let writeProfile = PasteboardWriteProfile.resolve(forPayloadSize: payloadSize)
 
         for attempt in 1...3 {
             let baselineChangeCount = pasteboard.changeCount
@@ -226,30 +250,31 @@ final class ClipboardStore: ObservableObject {
                 continue
             }
 
-            if waitForPasteboardWrite(of: item, after: baselineChangeCount, payloadSize: payloadSize) {
+            if waitForPasteboardWrite(of: item, after: baselineChangeCount, verificationTimeout: writeProfile.verificationTimeout) {
                 promote(item)
                 lastChangeCount = pasteboard.changeCount
                 lastCopiedItemID = item.id
                 persist()
                 logger.debug("pasteboard write succeeded for item \(item.id.uuidString, privacy: .public) size=\(payloadSize, privacy: .public)")
-                return ClipboardWriteResult(success: true, recommendedPasteDelay: recommendedPasteDelay)
+                return ClipboardWriteResult(success: true, recommendedPasteDelay: writeProfile.recommendedPasteDelay)
             }
 
             logger.error("pasteboard write verification attempt \(attempt, privacy: .public) timed out for item \(item.id.uuidString, privacy: .public)")
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.04 * Double(attempt)))
         }
 
-        return ClipboardWriteResult(success: false, recommendedPasteDelay: recommendedPasteDelay)
+        return ClipboardWriteResult(success: false, recommendedPasteDelay: writeProfile.recommendedPasteDelay)
     }
 
     @discardableResult
     func copyTextToPasteboard(_ text: String) -> Bool {
         let baselineChangeCount = pasteboard.changeCount
+        let writeProfile = PasteboardWriteProfile.resolve(forPayloadSize: text.utf8.count)
         let result = writeTextPayload(text)
         if !result {
             logger.error("copyTextToPasteboard failed for payload size=\(text.utf8.count, privacy: .public)")
         }
-        return result && waitForTextPasteboardWrite(text, after: baselineChangeCount, payloadSize: text.utf8.count)
+        return result && waitForTextPasteboardWrite(text, after: baselineChangeCount, verificationTimeout: writeProfile.verificationTimeout)
     }
 
     func togglePin(_ item: ClipboardItem) {
@@ -535,21 +560,6 @@ final class ClipboardStore: ObservableObject {
         }
     }
 
-    private func recommendedPasteDelay(forPayloadSize payloadSize: Int) -> TimeInterval {
-        switch payloadSize {
-        case 0..<128_000:
-            return 0.08
-        case 128_000..<512_000:
-            return 0.14
-        case 512_000..<2_000_000:
-            return 0.22
-        case 2_000_000..<8_000_000:
-            return 0.35
-        default:
-            return 0.55
-        }
-    }
-
     private func performPasteboardWrite(for item: ClipboardItem) -> Bool {
         switch item.kind {
         case .text, .code, .link:
@@ -632,8 +642,8 @@ final class ClipboardStore: ObservableObject {
         return pasteboard.writeObjects([item])
     }
 
-    private func waitForPasteboardWrite(of item: ClipboardItem, after baselineChangeCount: Int, payloadSize: Int) -> Bool {
-        let deadline = Date().addingTimeInterval(verificationTimeout(forPayloadSize: payloadSize))
+    private func waitForPasteboardWrite(of item: ClipboardItem, after baselineChangeCount: Int, verificationTimeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(verificationTimeout)
 
         while Date() < deadline {
             if pasteboard.changeCount > baselineChangeCount, verifyPasteboardPayload(for: item) {
@@ -645,8 +655,8 @@ final class ClipboardStore: ObservableObject {
         return false
     }
 
-    private func waitForTextPasteboardWrite(_ text: String, after baselineChangeCount: Int, payloadSize: Int) -> Bool {
-        let deadline = Date().addingTimeInterval(verificationTimeout(forPayloadSize: payloadSize))
+    private func waitForTextPasteboardWrite(_ text: String, after baselineChangeCount: Int, verificationTimeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(verificationTimeout)
 
         while Date() < deadline {
             if pasteboard.changeCount > baselineChangeCount,
@@ -673,22 +683,6 @@ final class ClipboardStore: ObservableObject {
             return pasteboard.data(forType: NSPasteboard.PasteboardType(UTType.png.identifier)) == pngData
         }
     }
-
-    private func verificationTimeout(forPayloadSize payloadSize: Int) -> TimeInterval {
-        switch payloadSize {
-        case 0..<128_000:
-            return 0.20
-        case 128_000..<512_000:
-            return 0.35
-        case 512_000..<2_000_000:
-            return 0.60
-        case 2_000_000..<8_000_000:
-            return 1.00
-        default:
-            return 1.60
-        }
-    }
-
     private func currentTextPayload() -> String? {
         if let string = pasteboard.string(forType: .string), !string.isEmpty {
             return string
@@ -931,17 +925,30 @@ final class ClipboardStore: ObservableObject {
 
     private func isConfidentialContent(_ text: String) -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
         let lowercase = trimmed.lowercased()
+
+        if containsHighConfidenceSecret(in: trimmed) {
+            return true
+        }
+
+        if containsStructuredSecretAssignment(in: trimmed) {
+            return true
+        }
 
         let keywordSignals = [
             "password", "passcode", "secret", "api_key", "apikey", "private key",
             "access token", "refresh token", "bearer ", "session token"
         ]
 
-        if keywordSignals.contains(where: { lowercase.contains($0) }) {
-            return true
+        if looksLikeStructuredCodeOrConfig(trimmed) {
+            return false
         }
 
+        return keywordSignals.contains { lowercase.contains($0) }
+    }
+
+    private func containsHighConfidenceSecret(in text: String) -> Bool {
         let regexes = [
             #"(?i)sk-[a-z0-9]{20,}"#,
             #"(?i)ghp_[a-z0-9]{20,}"#,
@@ -949,7 +956,76 @@ final class ClipboardStore: ObservableObject {
             #"-----BEGIN [A-Z ]+PRIVATE KEY-----"#
         ]
 
-        return regexes.contains { trimmed.range(of: $0, options: .regularExpression) != nil }
+        return regexes.contains { text.range(of: $0, options: .regularExpression) != nil }
+    }
+
+    private func containsStructuredSecretAssignment(in text: String) -> Bool {
+        let patterns = [
+            #"""(?is)<\s*(password|passcode|secret|api[_-]?key|apikey|access[_ -]?token|refresh[_ -]?token|session[_ -]?token)\s*>\s*([^<]{1,512}?)\s*</\s*\1\s*>"""#,
+            #"""(?im)["']?(password|passcode|secret|api[_-]?key|apikey|access[_ -]?token|refresh[_ -]?token|session[_ -]?token)["']?\s*[:=]\s*["']?([^"'\s,;<>{}]{1,512})"""#
+        ]
+
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
+            let range = NSRange(text.startIndex..., in: text)
+            let matches = regex.matches(in: text, range: range)
+
+            for match in matches {
+                guard match.numberOfRanges >= 3,
+                      let valueRange = Range(match.range(at: 2), in: text) else {
+                    continue
+                }
+
+                let value = String(text[valueRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                if isLikelySensitiveValue(value) {
+                    return true
+                }
+            }
+        }
+
+        return false
+    }
+
+    private func isLikelySensitiveValue(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+
+        let normalized = trimmed.lowercased()
+        let placeholderValues: Set<String> = [
+            "password", "passcode", "secret", "changeme", "changeit", "example",
+            "demo", "sample", "test", "testing", "localhost", "local", "root",
+            "admin", "advent"
+        ]
+
+        if placeholderValues.contains(normalized) {
+            return false
+        }
+
+        if containsHighConfidenceSecret(in: trimmed) {
+            return true
+        }
+
+        let isLongToken = trimmed.count >= 20
+            && trimmed.range(of: #"^[A-Za-z0-9_\-\.=+/]+$"#, options: .regularExpression) != nil
+        if isLongToken {
+            return true
+        }
+
+        let hasUppercase = trimmed.rangeOfCharacter(from: .uppercaseLetters) != nil
+        let hasLowercase = trimmed.rangeOfCharacter(from: .lowercaseLetters) != nil
+        let hasDigits = trimmed.rangeOfCharacter(from: .decimalDigits) != nil
+        let hasSymbols = trimmed.rangeOfCharacter(from: CharacterSet.alphanumerics.inverted) != nil
+        let characterClasses = [hasUppercase, hasLowercase, hasDigits, hasSymbols].filter { $0 }.count
+
+        if trimmed.count >= 8 && characterClasses >= 2 {
+            return true
+        }
+
+        return false
+    }
+
+    private func looksLikeStructuredCodeOrConfig(_ text: String) -> Bool {
+        ClipboardItem.detectKind(for: text) == .code
     }
 
     private func load() {

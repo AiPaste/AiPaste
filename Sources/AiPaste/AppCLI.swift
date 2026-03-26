@@ -399,7 +399,10 @@ private final class CLIRunner {
         let keyCode = CGKeyCode(kVK_ANSI_V)
 
         targetApplication.activate()
-        usleep(useconds_t(max(copyResult.recommendedPasteDelay, 0.12) * 1_000_000))
+        _ = FrontmostApplicationWaiter.waitBlocking(
+            for: targetApplication,
+            timeout: copyResult.activationTimeout
+        )
 
         let keyDown = CGEvent(keyboardEventSource: eventSource, virtualKey: keyCode, keyDown: true)
         keyDown?.flags = flags
