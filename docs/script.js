@@ -27,10 +27,20 @@ const translations = {
       "Native SwiftUI app with Homebrew install and local-first storage",
     ],
     toolStrip: ["ChatGPT", "Claude", "Cursor", "Terminal", "Docs"],
+    deviceMenu: ["AiPaste", "File", "Edit", "View", "Window", "Help", "Mon 9:41"],
+    composeMeta: ["AiPaste workflow", "AI Prompt Workspace"],
     deviceSidebarTitle: "AiPaste",
     deviceSidebarItems: ["All clips", "Pinned", "Work", "Archive"],
     deviceToolbarTitle: "Recent clipboard",
     pill: "Searchable",
+    editorLabels: ["Current prompt", "Context"],
+    editorLines: [
+      "Refine this answer for users, not engineers.",
+      "Keep the tone clear, calm, and actionable.",
+      "Return the shortest safe version first.",
+    ],
+    contextTags: ["Clipboard", "Useful links", "Prompt snippets", "Code snippets"],
+    clipboardPop: ["Paste back", "Keep the right answer close.", "Reuse prompts and outputs without breaking your flow."],
     clipApps: ["Claude", "Cursor", "Terminal"],
     clipTimes: ["Just now", "2 min ago", "8 min ago"],
     clipTitles: [
@@ -168,10 +178,20 @@ const translations = {
       "原生 SwiftUI 应用，支持 Homebrew 安装与本地优先存储",
     ],
     toolStrip: ["ChatGPT", "Claude", "Cursor", "终端", "文档"],
+    deviceMenu: ["AiPaste", "文件", "编辑", "视图", "窗口", "帮助", "周一 9:41"],
+    composeMeta: ["AiPaste 工作流", "AI 提示词工作区"],
     deviceSidebarTitle: "AiPaste",
     deviceSidebarItems: ["全部片段", "已置顶", "工作", "归档"],
     deviceToolbarTitle: "最近剪贴内容",
     pill: "可搜索",
+    editorLabels: ["当前提示词", "上下文"],
+    editorLines: [
+      "把这段回答润色成面向用户的版本。",
+      "保持语气清晰、克制、可执行。",
+      "优先返回最短且安全的版本。",
+    ],
+    contextTags: ["剪贴板", "常用链接", "提示词片段", "代码片段"],
+    clipboardPop: ["回贴", "把正确答案留在手边。", "复用提示词和输出，不打断你的工作流。"],
     clipApps: ["Claude", "Cursor", "终端"],
     clipTimes: ["刚刚", "2 分钟前", "8 分钟前"],
     clipTitles: [
@@ -346,10 +366,16 @@ const applyLanguage = (lang) => {
   setTexts(".hero-copy .hero-actions a", copy.heroButtons);
   setTexts(".hero-notes li", copy.heroNotes);
   setTexts(".tool-strip span", copy.toolStrip);
+  setTexts(".device-menu span", copy.deviceMenu);
+  setTexts(".compose-meta div", copy.composeMeta);
   setText(".device-sidebar p", copy.deviceSidebarTitle);
   setTexts(".device-sidebar span", copy.deviceSidebarItems);
   setText(".device-toolbar strong", copy.deviceToolbarTitle);
   setText(".device-toolbar .pill", copy.pill);
+  setTexts(".editor-label", copy.editorLabels);
+  setTexts(".editor-lines span", copy.editorLines);
+  setTexts(".context-tags span", copy.contextTags);
+  setTexts(".clipboard-pop .clipboard-pop-label, .clipboard-pop strong, .clipboard-pop p", copy.clipboardPop);
   setTexts(".clip-preview .clip-app", copy.clipApps);
   setTexts(".clip-preview .clip-time", copy.clipTimes);
   setTexts(".clip-preview strong", copy.clipTitles);

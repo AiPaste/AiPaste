@@ -112,63 +112,104 @@
           </div>
 
           <div class="hero-stage" aria-hidden="true">
-            <div class="device device-main">
-              <div class="device-bar">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-              <div class="device-sidebar">
-                <p>AiPaste</p>
-                <span>All clips</span>
-                <span>Pinned</span>
-                <span>Work</span>
-                <span>Archive</span>
-              </div>
-              <div class="device-content">
-                <div class="device-toolbar">
-                  <strong>Recent clipboard</strong>
-                  <span class="pill">Searchable</span>
+            <div class="device-shell">
+              <div class="device device-main">
+                <div class="device-bar">
+                  <span></span>
+                  <span></span>
+                  <span></span>
                 </div>
 
-                <article class="clip-preview clip-preview-active">
-                  <div class="clip-topline">
-                    <span class="clip-app">Claude</span>
-                    <span class="clip-time">Just now</span>
-                  </div>
-                  <strong>Rewrite this API error into a user-facing explanation with next steps.</strong>
-                  <p>Keep the prompt you finally got right instead of reconstructing it from memory.</p>
-                </article>
+                <div class="device-menu">
+                  <span class="device-menu-app">AiPaste</span>
+                  <span>File</span>
+                  <span>Edit</span>
+                  <span>View</span>
+                  <span>Window</span>
+                  <span>Help</span>
+                  <span class="device-menu-time">Mon 9:41</span>
+                </div>
 
-                <article class="clip-preview">
-                  <div class="clip-topline">
-                    <span class="clip-app">Cursor</span>
-                    <span class="clip-time">2 min ago</span>
-                  </div>
-                  <strong>Use this file as context and propose the smallest safe patch.</strong>
-                  <p>Reuse the exact context snippet that produced the good code review or patch.</p>
-                </article>
+                <div class="device-content">
+                  <div class="compose-window">
+                    <div class="compose-toolbar">
+                      <span class="compose-dot"></span>
+                      <span class="compose-dot"></span>
+                      <span class="compose-dot"></span>
+                      <span class="compose-toolbar-spacer"></span>
+                      <span class="compose-tool"></span>
+                      <span class="compose-tool"></span>
+                      <span class="compose-tool"></span>
+                    </div>
 
-                <article class="clip-preview">
-                  <div class="clip-topline">
-                    <span class="clip-app">Terminal</span>
-                    <span class="clip-time">8 min ago</span>
+                    <div class="compose-meta">
+                      <div class="compose-label">AiPaste workflow</div>
+                      <div class="compose-recipient">AI Prompt Workspace</div>
+                    </div>
+
+                    <div class="editor-card">
+                      <div class="editor-label">Current prompt</div>
+                      <div class="editor-lines">
+                        <span>Refine this answer for users, not engineers.</span>
+                        <span>Keep the tone clear, calm, and actionable.</span>
+                        <span>Return the shortest safe version first.</span>
+                      </div>
+                    </div>
                   </div>
-                  <strong>./bin/aipaste items paste 1</strong>
-                  <p>Move from browser to IDE to terminal without losing the answer you were using.</p>
-                </article>
+
+                  <div class="clipboard-pop">
+                    <div class="clipboard-pop-label">Paste back</div>
+                    <strong>Keep the right answer close.</strong>
+                    <p>Reuse prompts and outputs without breaking your flow.</p>
+                  </div>
+
+                  <div class="clipboard-tray">
+                    <div class="device-toolbar">
+                      <strong>Recent clipboard</strong>
+                      <span class="pill">Searchable</span>
+                    </div>
+
+                    <div class="context-tags">
+                      <span>Clipboard</span>
+                      <span>Useful links</span>
+                      <span>Prompt snippets</span>
+                      <span>Code snippets</span>
+                    </div>
+
+                    <div class="clip-row">
+                    <article class="clip-preview clip-preview-blue">
+                      <div class="clip-topline">
+                        <span class="clip-app">Claude</span>
+                        <span class="clip-time">Just now</span>
+                      </div>
+                      <strong>Rewrite this API error into a user-facing explanation.</strong>
+                      <p>Keep the useful prompt you finally got right.</p>
+                    </article>
+
+                    <article class="clip-preview clip-preview-amber">
+                      <div class="clip-topline">
+                        <span class="clip-app">Cursor</span>
+                        <span class="clip-time">2 min ago</span>
+                      </div>
+                      <strong>Use this file as context and propose the safest patch.</strong>
+                      <p>Reuse the exact context that produced the good review.</p>
+                    </article>
+
+                    <article class="clip-preview clip-preview-mint">
+                      <div class="clip-topline">
+                        <span class="clip-app">Terminal</span>
+                        <span class="clip-time">8 min ago</span>
+                      </div>
+                      <strong>./bin/aipaste items paste 1</strong>
+                      <p>Paste the right answer back into the active app fast.</p>
+                    </article>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div class="device-float float-terminal">
-              <p>prompt ops</p>
-              <code>$ ./bin/aipaste list --search prompt</code>
-              <code>$ ./bin/aipaste groups create claude</code>
-            </div>
-
-            <div class="device-float float-badge">
-              <span>ai native, not ai noisy</span>
-              <strong>Keep the useful context. Drop the repetitive copy-paste chaos.</strong>
+              <div class="device-base"></div>
+              <div class="device-lip"></div>
             </div>
           </div>
         </section>
