@@ -1,13 +1,17 @@
 # AiPaste
 
-AiPaste is a native macOS clipboard app built with SwiftUI. It monitors the system pasteboard, stores recent text clips locally, and presents them in a fast horizontal card layout inspired by the provided reference.
+AiPaste is a native macOS clipboard manager built with SwiftUI. It watches the system pasteboard, stores recent clips locally, and presents them in a fast horizontal panel designed for prompt-heavy and terminal-heavy workflows.
 
 ## Features
 
 - Native SwiftUI desktop UI with glassmorphism shell and large clipboard cards
 - Automatic clipboard monitoring with frontmost-app detection
-- Search and source-based filtering
-- One-click copy, pin, delete, and persistent local history
+- Search, groups, and source-based filtering
+- One-click copy, pin, move, delete, and persistent local history
+- iCloud sync for clipboard history and groups
+- Ignore rules for confidential content, transient content, and selected applications
+- Built-in CLI for scripted workflows and terminal usage
+- Sparkle-based in-app updates for packaged releases
 - Zero web runtime and zero third-party dependencies
 
 ## Run
@@ -18,19 +22,28 @@ swift run
 
 ## CLI
 
-AiPaste now also supports a command-line mode. You can use the wrapper:
+AiPaste also ships with a command-line mode.
+
+For local development, you can use the repository wrapper:
 
 ```bash
 ./bin/aipaste help
 ```
 
-Or install `aipaste` from the app so it is available in any new terminal window:
+You can also install `aipaste` from the app so it is available in any new terminal window:
 
 1. Open `Settings -> General -> Command Line`.
 2. Click `Install CLI to PATH`.
 3. Open a new terminal and run `aipaste help`.
 
-Or call the executable directly:
+The installer writes a wrapper into `~/.local/bin/aipaste` and adds `~/.local/bin` to your shell startup file. It currently supports the common macOS shells:
+
+- `zsh` via `~/.zshrc`
+- `bash` via `~/.bash_profile`
+- `fish` via `~/.config/fish/config.fish`
+- fallback shells via `~/.profile`
+
+You can also call the executable directly:
 
 ```bash
 swift run AiPaste -- cli help
@@ -79,6 +92,22 @@ Notes:
 - `panel ...` and `settings open` target a running AiPaste app instance.
 - `items paste` requires macOS Accessibility permission.
 - Index-based item commands use the same top-to-bottom order as `list`.
+- The PATH installer is intended for packaged app usage. The repo wrapper remains the simplest option during development.
+
+## Keyboard Shortcuts
+
+The panel supports configurable shortcuts from `Settings -> Shortcuts`. Current defaults include:
+
+- `Command + Shift + V` to show the panel
+- `Command + F` to focus search
+- `Left / Right` to move between items
+- `Up / Down` to move between groups
+- `Command + 1` through `Command + 9` to jump to visible items `1...9`
+- `Return` to paste the selected item
+- `Command + Delete` to delete the selected item
+- `Escape` to hide the panel
+
+For compatibility, the panel still accepts bare `Delete` as a legacy delete shortcut.
 
 To enable automatic paste-back into the previously active app, grant AiPaste Accessibility permission in macOS System Settings.
 
