@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject private var appState = AppState.shared
+    @ObservedObject private var updateManager = AppUpdateManager.shared
     @EnvironmentObject private var store: ClipboardStore
     @State private var editingGroupID: String?
     @State private var editingGroupTitle = ""
@@ -131,6 +132,20 @@ struct ContentView: View {
     }
 
     private var toolbar: some View {
+        ZStack(alignment: .leading) {
+            toolbarContent
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.leading, updateManager.availableVersion != nil ? 108 : 0)
+
+            if updateManager.availableVersion != nil {
+                updateButton
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: updateManager.availableVersion != nil)
+    }
+
+    private var toolbarContent: some View {
         HStack(spacing: 18) {
             searchControl
 
@@ -175,7 +190,40 @@ struct ContentView: View {
             }
             .buttonStyle(.plain)
         }
-        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private var updateButton: some View {
+        Button {
+            Task {
+                await updateManager.checkForUpdates(userInitiated: true)
+            }
+        } label: {
+            Text(updateManager.isChecking ? "Updating…" : "Update")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, 18)
+                .frame(height: 40)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.16, green: 0.58, blue: 0.98),
+                                    Color(red: 0.06, green: 0.42, blue: 0.92)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
+                        )
+                )
+                .shadow(color: Color(red: 0.07, green: 0.36, blue: 0.92).opacity(0.34), radius: 14, y: 8)
+        }
+        .buttonStyle(.plain)
+        .disabled(updateManager.isChecking)
     }
 
     @ViewBuilder
