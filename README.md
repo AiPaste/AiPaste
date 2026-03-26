@@ -24,6 +24,12 @@ AiPaste now also supports a command-line mode. You can use the wrapper:
 ./bin/aipaste help
 ```
 
+Or install `aipaste` from the app so it is available in any new terminal window:
+
+1. Open `Settings -> General -> Command Line`.
+2. Click `Install CLI to PATH`.
+3. Open a new terminal and run `aipaste help`.
+
 Or call the executable directly:
 
 ```bash

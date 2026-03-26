@@ -61,6 +61,7 @@ private struct SettingsRootView: View {
     @ObservedObject private var store = AppState.shared.store
     @ObservedObject private var privacyStore = PrivacySettingsStore.shared
     @ObservedObject private var updateManager = AppUpdateManager.shared
+    @ObservedObject private var cliToolInstaller = CLIToolInstaller.shared
     @StateObject private var shortcutRecorder = ShortcutRecordingController()
     @State private var selectedPane: SettingsPane = .general
     @State private var selectedIgnoredApplicationID: String?
@@ -278,6 +279,48 @@ private struct SettingsRootView: View {
                                 }
                                 .buttonStyle(SettingsSecondaryButtonStyle())
                             }
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Command Line")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Color.white.opacity(0.96))
+
+                    SettingsCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Install the `aipaste` command into `~/.local/bin` and add that directory to your shell PATH.")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(Color.white.opacity(0.72))
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label(cliToolInstaller.commandPath, systemImage: "terminal")
+                                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(Color.white.opacity(0.86))
+
+                                Label(cliToolInstaller.shellConfigPath, systemImage: "text.alignleft")
+                                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(Color.white.opacity(0.56))
+                            }
+
+                            HStack(spacing: 10) {
+                                Button(cliToolInstaller.isInstalled ? "Reinstall CLI to PATH" : "Install CLI to PATH") {
+                                    cliToolInstaller.install()
+                                }
+                                .buttonStyle(SettingsSecondaryButtonStyle())
+
+                                Button("Refresh") {
+                                    cliToolInstaller.refreshStatus()
+                                }
+                                .buttonStyle(SettingsSecondaryButtonStyle())
+                            }
+
+                            Text(cliToolInstaller.statusMessage)
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(cliToolInstaller.isInstalled ? Color.white.opacity(0.62) : Color.white.opacity(0.54))
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
