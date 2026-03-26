@@ -95,6 +95,22 @@ private struct SettingsRootView: View {
 
             Spacer(minLength: 0)
 
+            VStack(alignment: .leading, spacing: 6) {
+                Button(updateManager.isChecking ? "Checking…" : "Check for Updates") {
+                    Task {
+                        await updateManager.checkForUpdates(userInitiated: true)
+                    }
+                }
+                .buttonStyle(SettingsSecondaryButtonStyle())
+                .disabled(updateManager.isChecking)
+
+                Text(updateManager.updateStatusMessage)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.50))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.bottom, 8)
+
             Text(versionLabel)
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(Color.white.opacity(0.46))
@@ -180,30 +196,6 @@ private struct SettingsRootView: View {
                             )
                         )
                         SettingsToggleRow(title: "Sound effects", isOn: $soundEffects, showsDivider: false)
-                    }
-                }
-
-                SettingsCard {
-                    HStack(alignment: .center, spacing: 12) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Software Update")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Color.white.opacity(0.92))
-
-                            Text(updateManager.updateStatusMessage)
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(Color.white.opacity(0.62))
-                        }
-
-                        Spacer(minLength: 0)
-
-                        Button(updateManager.isChecking ? "Checking…" : "Check Now") {
-                            Task {
-                                await updateManager.checkForUpdates(userInitiated: true)
-                            }
-                        }
-                        .buttonStyle(SettingsSecondaryButtonStyle())
-                        .disabled(updateManager.isChecking)
                     }
                 }
 
