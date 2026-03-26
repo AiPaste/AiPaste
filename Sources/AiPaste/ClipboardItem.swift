@@ -23,6 +23,8 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
     let id: UUID
     var kind: ClipboardKind
     var textContent: String?
+    var codeLanguage: String?
+    var sourceFileName: String?
     var imagePNGData: Data?
     var imageSize: PixelSize?
     var pdfData: Data?
@@ -39,6 +41,8 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         id: UUID = UUID(),
         textContent: String,
         kind: ClipboardKind = .text,
+        codeLanguage: String? = nil,
+        sourceFileName: String? = nil,
         groupID: String? = nil,
         capturedAt: Date = .now,
         bundleIdentifier: String?,
@@ -48,6 +52,8 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         self.id = id
         self.kind = kind
         self.textContent = textContent
+        self.codeLanguage = codeLanguage
+        self.sourceFileName = sourceFileName
         self.imagePNGData = nil
         self.imageSize = nil
         self.pdfData = nil
@@ -74,6 +80,8 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         self.id = id
         self.kind = .image
         self.textContent = nil
+        self.codeLanguage = nil
+        self.sourceFileName = nil
         self.imagePNGData = imagePNGData
         self.imageSize = imageSize
         self.pdfData = nil
@@ -102,6 +110,8 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         self.id = id
         self.kind = .pdf
         self.textContent = nil
+        self.codeLanguage = nil
+        self.sourceFileName = nil
         self.imagePNGData = nil
         self.imageSize = nil
         self.pdfData = pdfData
@@ -156,6 +166,12 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         case .text:
             return "\(characterCount) characters"
         case .code:
+            if let sourceFileName, !sourceFileName.isEmpty {
+                return "\(sourceFileName) • \(lineCount) lines"
+            }
+            if let codeLanguage, !codeLanguage.isEmpty {
+                return "\(codeLanguage) • \(lineCount) lines"
+            }
             return "\(lineCount) lines"
         case .link:
             return linkHost ?? "Link"
@@ -173,7 +189,7 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
     }
 
     var searchCorpus: String {
-        [cardTitle, appName, textPreview, linkHost ?? "", pdfFileName ?? ""]
+        [cardTitle, appName, textPreview, linkHost ?? "", pdfFileName ?? "", sourceFileName ?? "", codeLanguage ?? ""]
             .filter { !$0.isEmpty }
             .joined(separator: " ")
     }
@@ -245,11 +261,19 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
     }
 
     static func detectKind(for text: String) -> ClipboardKind {
+        detectMetadata(for: text, sourceFileName: nil).kind
+    }
+
+    static func detectMetadata(for text: String, sourceFileName: String?) -> (kind: ClipboardKind, codeLanguage: String?) {
         if URL.normalizedClipboardURL(from: text) != nil {
-            return .link
+            return (.link, nil)
         }
 
-        return isLikelyCode(text) ? .code : .text
+        if let codeLanguage = detectCodeLanguage(for: text, sourceFileName: sourceFileName) {
+            return (.code, codeLanguage)
+        }
+
+        return (isLikelyCode(text) ? .code : .text, nil)
     }
 
     private static func isLikelyCode(_ text: String) -> Bool {
@@ -281,6 +305,150 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         }
 
         return false
+    }
+
+    private static func detectCodeLanguage(for text: String, sourceFileName: String?) -> String? {
+        if let sourceFileName,
+           let language = languageForFileName(sourceFileName) {
+            return language
+        }
+
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        if let fencedLanguage = fencedCodeLanguage(from: trimmed) {
+            return fencedLanguage
+        }
+
+        let lowercased = trimmed.lowercased()
+
+        let languageRules: [(String, [String])] = [
+            ("Swift", ["import swiftui", "import foundation", "let ", "var ", "struct ", "enum ", "protocol ", "guard ", "func "]),
+            ("TypeScript", ["interface ", "type ", ": string", ": number", "export type", "import type", " as const"]),
+            ("JavaScript", ["function ", "const ", "=>", "module.exports", "require(", "console.log("]),
+            ("Python", ["def ", "import ", "from ", "print(", "elif ", "__name__ == \"__main__\""]),
+            ("Shell", ["#!/bin/bash", "#!/bin/zsh", "#!/usr/bin/env bash", "#!/usr/bin/env zsh", "brew ", "curl ", "export ", "chmod "]),
+            ("Go", ["package main", "func main()", "import (", "fmt."]),
+            ("Rust", ["fn main()", "let mut ", "impl ", "use std::", "pub struct"]),
+            ("Java", ["public class ", "private static", "public static void main", "import java."]),
+            ("Kotlin", ["fun main(", "val ", "var ", "data class ", "package "]),
+            ("SQL", ["select ", "insert into ", "update ", "delete from ", "create table ", "alter table "]),
+            ("HTML", ["<!doctype html", "<html", "<div", "<span", "</"]),
+            ("CSS", ["{", "}", "color:", "display:", "@media", ":root"]),
+            ("JSON", ["{\"", "\":[", "\":", "\"}"]),
+            ("YAML", [": ", "- ", "version:", "services:", "name:"])
+        ]
+
+        for (language, signals) in languageRules {
+            let matchCount = signals.filter { lowercased.contains($0) }.count
+            if matchCount >= 2 || (language != "JSON" && language != "YAML" && matchCount >= 1 && isLikelyCode(text)) {
+                return language
+            }
+        }
+
+        return nil
+    }
+
+    private static func fencedCodeLanguage(from text: String) -> String? {
+        let pattern = #"^```([a-zA-Z0-9_+#-]+)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let range = Range(match.range(at: 1), in: text) else {
+            return nil
+        }
+
+        let token = String(text[range]).lowercased()
+        return languageForFenceToken(token)
+    }
+
+    private static func languageForFenceToken(_ token: String) -> String? {
+        let normalized = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        let mapping: [String: String] = [
+            "swift": "Swift",
+            "ts": "TypeScript",
+            "tsx": "TypeScript",
+            "typescript": "TypeScript",
+            "js": "JavaScript",
+            "jsx": "JavaScript",
+            "javascript": "JavaScript",
+            "py": "Python",
+            "python": "Python",
+            "sh": "Shell",
+            "bash": "Shell",
+            "zsh": "Shell",
+            "shell": "Shell",
+            "go": "Go",
+            "rs": "Rust",
+            "rust": "Rust",
+            "java": "Java",
+            "kt": "Kotlin",
+            "kotlin": "Kotlin",
+            "sql": "SQL",
+            "html": "HTML",
+            "css": "CSS",
+            "json": "JSON",
+            "yaml": "YAML",
+            "yml": "YAML",
+            "toml": "TOML",
+            "xml": "XML"
+        ]
+        return mapping[normalized]
+    }
+
+    private static func languageForFileName(_ fileName: String) -> String? {
+        let lowercased = fileName.lowercased()
+        let url = URL(fileURLWithPath: lowercased)
+        let ext = url.pathExtension
+        guard !ext.isEmpty else { return nil }
+
+        let mapping: [String: String] = [
+            "swift": "Swift",
+            "m": "Objective-C",
+            "mm": "Objective-C++",
+            "h": "C Header",
+            "c": "C",
+            "cc": "C++",
+            "cpp": "C++",
+            "cxx": "C++",
+            "hpp": "C++ Header",
+            "js": "JavaScript",
+            "jsx": "JavaScript",
+            "ts": "TypeScript",
+            "tsx": "TypeScript",
+            "py": "Python",
+            "rb": "Ruby",
+            "go": "Go",
+            "rs": "Rust",
+            "java": "Java",
+            "kt": "Kotlin",
+            "kts": "Kotlin",
+            "scala": "Scala",
+            "cs": "C#",
+            "php": "PHP",
+            "sh": "Shell",
+            "bash": "Shell",
+            "zsh": "Shell",
+            "fish": "Fish",
+            "sql": "SQL",
+            "html": "HTML",
+            "css": "CSS",
+            "scss": "SCSS",
+            "sass": "Sass",
+            "less": "Less",
+            "json": "JSON",
+            "yaml": "YAML",
+            "yml": "YAML",
+            "toml": "TOML",
+            "xml": "XML",
+            "vue": "Vue",
+            "svelte": "Svelte",
+            "dart": "Dart",
+            "lua": "Lua",
+            "r": "R",
+            "pl": "Perl"
+        ]
+
+        return mapping[ext]
     }
 }
 

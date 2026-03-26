@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import Combine
 import Foundation
 import PDFKit
@@ -62,6 +63,10 @@ struct ColorValue: Hashable {
 
 @MainActor
 final class ClipboardStore: ObservableObject {
+    private struct TextCaptureContext {
+        let sourceFileName: String?
+    }
+
     @Published private(set) var items: [ClipboardItem] = []
     @Published private(set) var groups: [ClipboardGroup] = []
     @Published var searchText = ""
@@ -355,8 +360,10 @@ final class ClipboardStore: ObservableObject {
         if shouldIgnoreTextCapture(normalized, privacy: privacy) {
             return true
         }
+        let textContext = currentTextCaptureContext(for: app)
         upsertTextItem(
             normalized,
+            sourceFileName: textContext?.sourceFileName,
             groupID: currentGroupID,
             appName: appName,
             bundleIdentifier: bundleIdentifier
@@ -366,21 +373,31 @@ final class ClipboardStore: ObservableObject {
         return true
     }
 
-    private func upsertTextItem(_ text: String, groupID: String?, appName: String, bundleIdentifier: String?) {
-        let kind = ClipboardItem.detectKind(for: text)
+    private func upsertTextItem(
+        _ text: String,
+        sourceFileName: String?,
+        groupID: String?,
+        appName: String,
+        bundleIdentifier: String?
+    ) {
+        let metadata = ClipboardItem.detectMetadata(for: text, sourceFileName: sourceFileName)
 
         if let existingIndex = items.firstIndex(where: { $0.matchesStringPayload(text, in: groupID) }) {
             var existing = items.remove(at: existingIndex)
             existing.capturedAt = .now
             existing.appName = appName
             existing.bundleIdentifier = bundleIdentifier
-            existing.kind = kind
+            existing.kind = metadata.kind
+            existing.codeLanguage = metadata.codeLanguage
+            existing.sourceFileName = sourceFileName
             items.insert(existing, at: 0)
         } else {
             items.insert(
                 ClipboardItem(
                     textContent: text,
-                    kind: kind,
+                    kind: metadata.kind,
+                    codeLanguage: metadata.codeLanguage,
+                    sourceFileName: sourceFileName,
                     groupID: groupID,
                     capturedAt: .now,
                     bundleIdentifier: bundleIdentifier,
@@ -586,6 +603,91 @@ final class ClipboardStore: ObservableObject {
         pendingRetryWorkItem = nil
         pendingChangeCount = nil
         pendingCaptureAttempts = 0
+    }
+
+    private func currentTextCaptureContext(for app: NSRunningApplication?) -> TextCaptureContext? {
+        guard let app,
+              isLikelyCodeEditor(appName: app.localizedName ?? "", bundleIdentifier: app.bundleIdentifier),
+              let focusedWindowElement = focusedWindowElement(for: app.processIdentifier) else {
+            return nil
+        }
+
+        if let documentURLString = accessibilityStringAttribute(kAXDocumentAttribute as CFString, element: focusedWindowElement),
+           let fileName = fileName(fromDocumentValue: documentURLString) {
+            return TextCaptureContext(sourceFileName: fileName)
+        }
+
+        if let title = accessibilityStringAttribute(kAXTitleAttribute as CFString, element: focusedWindowElement),
+           let fileName = fileName(fromWindowTitle: title) {
+            return TextCaptureContext(sourceFileName: fileName)
+        }
+
+        return nil
+    }
+
+    private func isLikelyCodeEditor(appName: String, bundleIdentifier: String?) -> Bool {
+        let needle = [appName, bundleIdentifier ?? ""]
+            .joined(separator: " ")
+            .lowercased()
+
+        let editorSignals = [
+            "idea", "intellij", "jetbrains", "pycharm", "goland", "webstorm", "rubymine",
+            "clion", "android studio", "xcode", "visual studio code", "cursor", "zed",
+            "nova", "sublime", "bbedit", "code"
+        ]
+
+        return editorSignals.contains(where: { needle.contains($0) })
+    }
+
+    private func focusedWindowElement(for processID: pid_t) -> AXUIElement? {
+        let appElement = AXUIElementCreateApplication(processID)
+        var value: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &value)
+        guard result == .success, let value else { return nil }
+        guard CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
+        return unsafeDowncast(value, to: AXUIElement.self)
+    }
+
+    private func accessibilityStringAttribute(_ attribute: CFString, element: AXUIElement) -> String? {
+        var value: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, attribute, &value)
+        guard result == .success else { return nil }
+        return value as? String
+    }
+
+    private func fileName(fromDocumentValue value: String) -> String? {
+        if let url = URL(string: value), url.isFileURL {
+            return url.lastPathComponent
+        }
+
+        let documentURL = URL(fileURLWithPath: value)
+        if !documentURL.lastPathComponent.isEmpty {
+            return documentURL.lastPathComponent
+        }
+
+        return nil
+    }
+
+    private func fileName(fromWindowTitle title: String) -> String? {
+        let separators = [" — ", " – ", " - ", " • ", " · "]
+        let candidates = separators.flatMap { separator in
+            title.components(separatedBy: separator)
+        } + [title]
+
+        let pattern = #"[A-Za-z0-9._-]+\.[A-Za-z0-9#+-]{1,8}"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+
+        for candidate in candidates {
+            let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+            let range = NSRange(trimmed.startIndex..., in: trimmed)
+            guard let match = regex.firstMatch(in: trimmed, range: range),
+                  let swiftRange = Range(match.range, in: trimmed) else {
+                continue
+            }
+            return String(trimmed[swiftRange])
+        }
+
+        return nil
     }
 
     private func currentPDFFileURL() -> URL? {

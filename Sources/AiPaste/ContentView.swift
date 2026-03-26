@@ -673,9 +673,7 @@ private struct ClipboardCard: View {
     private var codeBody: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Image(systemName: "chevron.left.forwardslash.chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color(red: 0.44, green: 0.76, blue: 1.0))
+                CodeLanguageIcon(language: codeLanguageHint)
 
                 Text(codeLanguageHint)
                     .font(.system(size: 11, weight: .semibold))
@@ -854,20 +852,194 @@ private struct ClipboardCard: View {
     }
 
     private var codeLanguageHint: String {
-        let text = item.textPreview.lowercased()
-        if text.contains("import swift") || text.contains("let ") || text.contains("var ") || text.contains("struct ") {
-            return "Swift"
+        item.codeLanguage ?? "Code"
+    }
+}
+
+private struct CodeLanguageIcon: View {
+    let language: String
+
+    private var style: CodeLanguageIconStyle {
+        CodeLanguageIconStyle.resolve(for: language)
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(style.background)
+
+            if let symbolName = style.symbolName {
+                Image(systemName: symbolName)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(style.foreground)
+            } else {
+                Text(style.monogram)
+                    .font(.system(size: 9, weight: .black, design: .rounded))
+                    .foregroundStyle(style.foreground)
+            }
         }
-        if text.contains("function ") || text.contains("const ") || text.contains("=>") {
-            return "JavaScript"
+        .frame(width: 18, height: 18)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(style.border, lineWidth: 1)
+        )
+    }
+}
+
+private struct CodeLanguageIconStyle {
+    let symbolName: String?
+    let monogram: String
+    let foreground: Color
+    let background: Color
+    let border: Color
+
+    static func resolve(for language: String) -> CodeLanguageIconStyle {
+        let normalized = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        switch normalized {
+        case "swift":
+            return CodeLanguageIconStyle(
+                symbolName: "swift",
+                monogram: "S",
+                foreground: Color.white,
+                background: Color(red: 0.97, green: 0.39, blue: 0.19),
+                border: Color(red: 0.88, green: 0.31, blue: 0.16)
+            )
+        case "python":
+            return CodeLanguageIconStyle(
+                symbolName: nil,
+                monogram: "Py",
+                foreground: Color.white,
+                background: Color(red: 0.18, green: 0.48, blue: 0.90),
+                border: Color(red: 0.14, green: 0.38, blue: 0.74)
+            )
+        case "typescript":
+            return CodeLanguageIconStyle(
+                symbolName: nil,
+                monogram: "TS",
+                foreground: Color.white,
+                background: Color(red: 0.10, green: 0.46, blue: 0.94),
+                border: Color(red: 0.08, green: 0.37, blue: 0.78)
+            )
+        case "javascript":
+            return CodeLanguageIconStyle(
+                symbolName: nil,
+                monogram: "JS",
+                foreground: Color.black.opacity(0.82),
+                background: Color(red: 0.95, green: 0.82, blue: 0.18),
+                border: Color(red: 0.84, green: 0.70, blue: 0.12)
+            )
+        case "shell":
+            return CodeLanguageIconStyle(
+                symbolName: "terminal",
+                monogram: "Sh",
+                foreground: Color.white,
+                background: Color(red: 0.20, green: 0.24, blue: 0.30),
+                border: Color(red: 0.13, green: 0.16, blue: 0.20)
+            )
+        case "go":
+            return CodeLanguageIconStyle(
+                symbolName: nil,
+                monogram: "Go",
+                foreground: Color.white,
+                background: Color(red: 0.09, green: 0.67, blue: 0.83),
+                border: Color(red: 0.07, green: 0.54, blue: 0.67)
+            )
+        case "rust":
+            return CodeLanguageIconStyle(
+                symbolName: "gearshape.2.fill",
+                monogram: "Rs",
+                foreground: Color.white,
+                background: Color(red: 0.37, green: 0.30, blue: 0.25),
+                border: Color(red: 0.28, green: 0.22, blue: 0.18)
+            )
+        case "java":
+            return CodeLanguageIconStyle(
+                symbolName: "cup.and.saucer.fill",
+                monogram: "Jv",
+                foreground: Color.white,
+                background: Color(red: 0.76, green: 0.29, blue: 0.23),
+                border: Color(red: 0.62, green: 0.22, blue: 0.18)
+            )
+        case "kotlin":
+            return CodeLanguageIconStyle(
+                symbolName: nil,
+                monogram: "Kt",
+                foreground: Color.white,
+                background: Color(red: 0.53, green: 0.29, blue: 0.93),
+                border: Color(red: 0.42, green: 0.22, blue: 0.75)
+            )
+        case "html", "xml":
+            return CodeLanguageIconStyle(
+                symbolName: "chevron.left.forwardslash.chevron.right",
+                monogram: "H",
+                foreground: Color.white,
+                background: Color(red: 0.88, green: 0.34, blue: 0.18),
+                border: Color(red: 0.73, green: 0.27, blue: 0.14)
+            )
+        case "css", "scss", "sass", "less":
+            return CodeLanguageIconStyle(
+                symbolName: "paintbrush.fill",
+                monogram: "CSS",
+                foreground: Color.white,
+                background: Color(red: 0.18, green: 0.48, blue: 0.94),
+                border: Color(red: 0.14, green: 0.38, blue: 0.78)
+            )
+        case "sql":
+            return CodeLanguageIconStyle(
+                symbolName: "cylinder.fill",
+                monogram: "SQL",
+                foreground: Color.white,
+                background: Color(red: 0.20, green: 0.64, blue: 0.54),
+                border: Color(red: 0.15, green: 0.51, blue: 0.43)
+            )
+        case "json", "yaml", "toml":
+            return CodeLanguageIconStyle(
+                symbolName: "list.bullet.rectangle.portrait.fill",
+                monogram: "CFG",
+                foreground: Color.white,
+                background: Color(red: 0.45, green: 0.48, blue: 0.58),
+                border: Color(red: 0.35, green: 0.38, blue: 0.46)
+            )
+        case "c", "c++", "objective-c", "objective-c++", "c#", "scala", "ruby", "php", "dart", "lua", "r", "perl", "fish", "vue", "svelte":
+            return CodeLanguageIconStyle(
+                symbolName: nil,
+                monogram: monogram(for: language),
+                foreground: Color.white,
+                background: Color(red: 0.40, green: 0.46, blue: 0.66),
+                border: Color(red: 0.31, green: 0.36, blue: 0.52)
+            )
+        default:
+            return CodeLanguageIconStyle(
+                symbolName: "chevron.left.forwardslash.chevron.right",
+                monogram: monogram(for: language),
+                foreground: Color.white,
+                background: Color(red: 0.24, green: 0.58, blue: 0.96),
+                border: Color(red: 0.19, green: 0.47, blue: 0.79)
+            )
         }
-        if text.contains("def ") || text.contains("import ") || text.contains("print(") {
-            return "Python"
+    }
+
+    private static func monogram(for language: String) -> String {
+        let trimmed = language.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "</>" }
+
+        let compact = trimmed
+            .split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+            .prefix(2)
+            .map { token -> String in
+                if token.count <= 2 {
+                    return token.uppercased()
+                }
+                return String(token.prefix(1)).uppercased()
+            }
+            .joined()
+
+        if compact.isEmpty {
+            return String(trimmed.prefix(2)).uppercased()
         }
-        if text.contains("git ") || text.contains("brew ") || text.contains("swift run") || text.contains("npm ") {
-            return "Shell"
-        }
-        return "Code"
+
+        return String(compact.prefix(3))
     }
 }
 

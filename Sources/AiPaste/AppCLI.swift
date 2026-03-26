@@ -583,6 +583,8 @@ private struct ItemSummary: Encodable {
     let groupTitle: String?
     let appName: String
     let bundleIdentifier: String?
+    let codeLanguage: String?
+    let sourceFileName: String?
     let pinned: Bool
     let capturedAt: Date
     let preview: String
@@ -595,6 +597,8 @@ private struct ItemSummary: Encodable {
         groupTitle = group?.title
         appName = item.appName
         bundleIdentifier = item.bundleIdentifier
+        codeLanguage = item.codeLanguage
+        sourceFileName = item.sourceFileName
         pinned = item.isPinned
         capturedAt = item.capturedAt
         switch item.kind {
