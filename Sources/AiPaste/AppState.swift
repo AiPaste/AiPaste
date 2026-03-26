@@ -269,7 +269,20 @@ final class AppState: ObservableObject {
             moveGroupSelection(by: -1)
         case .down:
             moveGroupSelection(by: 1)
+        case let .selectVisibleItem(index):
+            selectVisibleItem(at: index)
         }
+    }
+
+    private func selectVisibleItem(at index: Int) {
+        let visibleItems = store.visibleItems
+        guard visibleItems.indices.contains(index) else {
+            logger.debug("selectVisibleItem ignored out-of-range index \(index, privacy: .public) visibleCount=\(visibleItems.count, privacy: .public)")
+            return
+        }
+
+        selectedItemID = visibleItems[index].id
+        logger.debug("selectVisibleItem changed selection to \(self.selectedItemID?.uuidString ?? "nil", privacy: .public) index=\(index, privacy: .public)")
     }
 
     private func moveItemSelection(by delta: Int) {

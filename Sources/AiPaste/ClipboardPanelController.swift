@@ -7,6 +7,7 @@ enum ClipboardPanelNavigationCommand {
     case right
     case up
     case down
+    case selectVisibleItem(Int)
 }
 
 @MainActor
@@ -232,6 +233,12 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
             guard !isTextInputEditing else { return false }
             logger.debug("matched shortcut action deleteSelectedItem")
             onDeleteSelection()
+            return true
+        }
+        if let itemJumpAction = ShortcutAction.itemJumpActions.first(where: { shortcutManager.matches(event, action: $0) }),
+           let itemJumpIndex = itemJumpAction.itemJumpIndex {
+            logger.debug("matched shortcut action \(itemJumpAction.rawValue, privacy: .public)")
+            onNavigationCommand(.selectVisibleItem(itemJumpIndex))
             return true
         }
         if shortcutManager.matches(event, action: .previousItem) {

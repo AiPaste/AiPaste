@@ -11,6 +11,15 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
     case showPanel
     case openSettings
     case focusSearch
+    case selectFirstItem
+    case selectSecondItem
+    case selectThirdItem
+    case selectFourthItem
+    case selectFifthItem
+    case selectSixthItem
+    case selectSeventhItem
+    case selectEighthItem
+    case selectNinthItem
     case previousItem
     case nextItem
     case previousGroup
@@ -22,6 +31,10 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     var title: String {
+        if let itemJumpIndex {
+            return "Jump to Item \(itemJumpIndex + 1)"
+        }
+
         switch self {
         case .showPanel:
             return "Show Panel"
@@ -29,6 +42,8 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
             return "Open Settings"
         case .focusSearch:
             return "Focus Search"
+        case .selectFirstItem, .selectSecondItem, .selectThirdItem, .selectFourthItem, .selectFifthItem, .selectSixthItem, .selectSeventhItem, .selectEighthItem, .selectNinthItem:
+            return "Jump to Item \(itemJumpIndex! + 1)"
         case .previousItem:
             return "Select Previous Item"
         case .nextItem:
@@ -47,9 +62,15 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
     }
 
     var sectionTitle: String {
+        if itemJumpIndex != nil {
+            return "Panel Navigation"
+        }
+
         switch self {
         case .showPanel, .openSettings:
             return "Global"
+        case .selectFirstItem, .selectSecondItem, .selectThirdItem, .selectFourthItem, .selectFifthItem, .selectSixthItem, .selectSeventhItem, .selectEighthItem, .selectNinthItem:
+            return "Panel Navigation"
         case .focusSearch, .previousItem, .nextItem, .previousGroup, .nextGroup:
             return "Panel Navigation"
         case .pasteSelectedItem, .deleteSelectedItem, .hidePanel:
@@ -58,6 +79,10 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
     }
 
     var defaultShortcut: ShortcutDescriptor {
+        if let itemJumpIndex, let keyCode = Self.digitKeyCode(for: itemJumpIndex) {
+            return ShortcutDescriptor(keyCode: keyCode, modifiers: [.command])
+        }
+
         switch self {
         case .showPanel:
             return ShortcutDescriptor(keyCode: UInt16(kVK_ANSI_V), modifiers: [.command, .shift])
@@ -65,6 +90,8 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
             return ShortcutDescriptor(keyCode: UInt16(kVK_ANSI_Comma), modifiers: [.command])
         case .focusSearch:
             return ShortcutDescriptor(keyCode: UInt16(kVK_ANSI_F), modifiers: [.command])
+        case .selectFirstItem, .selectSecondItem, .selectThirdItem, .selectFourthItem, .selectFifthItem, .selectSixthItem, .selectSeventhItem, .selectEighthItem, .selectNinthItem:
+            return ShortcutDescriptor(keyCode: Self.digitKeyCode(for: itemJumpIndex!)!, modifiers: [.command])
         case .previousItem:
             return ShortcutDescriptor(keyCode: UInt16(kVK_LeftArrow), modifiers: [])
         case .nextItem:
@@ -79,6 +106,60 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
             return ShortcutDescriptor(keyCode: UInt16(kVK_Delete), modifiers: [])
         case .hidePanel:
             return ShortcutDescriptor(keyCode: UInt16(kVK_Escape), modifiers: [])
+        }
+    }
+
+    var itemJumpIndex: Int? {
+        switch self {
+        case .selectFirstItem:
+            return 0
+        case .selectSecondItem:
+            return 1
+        case .selectThirdItem:
+            return 2
+        case .selectFourthItem:
+            return 3
+        case .selectFifthItem:
+            return 4
+        case .selectSixthItem:
+            return 5
+        case .selectSeventhItem:
+            return 6
+        case .selectEighthItem:
+            return 7
+        case .selectNinthItem:
+            return 8
+        default:
+            return nil
+        }
+    }
+
+    static var itemJumpActions: [ShortcutAction] {
+        allCases.filter { $0.itemJumpIndex != nil }
+    }
+
+    private static func digitKeyCode(for itemJumpIndex: Int) -> UInt16? {
+        switch itemJumpIndex {
+        case 0:
+            return UInt16(kVK_ANSI_1)
+        case 1:
+            return UInt16(kVK_ANSI_2)
+        case 2:
+            return UInt16(kVK_ANSI_3)
+        case 3:
+            return UInt16(kVK_ANSI_4)
+        case 4:
+            return UInt16(kVK_ANSI_5)
+        case 5:
+            return UInt16(kVK_ANSI_6)
+        case 6:
+            return UInt16(kVK_ANSI_7)
+        case 7:
+            return UInt16(kVK_ANSI_8)
+        case 8:
+            return UInt16(kVK_ANSI_9)
+        default:
+            return nil
         }
     }
 }
