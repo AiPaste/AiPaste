@@ -593,19 +593,8 @@ private struct SettingsRootView: View {
     }
 
     private var versionLabel: String {
-        let shortVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        let buildVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
-
-        if let shortVersion, !shortVersion.isEmpty,
-           let buildVersion, !buildVersion.isEmpty, buildVersion != shortVersion {
-            return "Version \(shortVersion) (\(buildVersion))"
-        }
-
-        if let shortVersion, !shortVersion.isEmpty {
-            return "Version \(shortVersion)"
-        }
-
-        return "Version Development"
+        let version = AppVersion.displayString
+        return version == "Unknown" ? "Version Development" : "Version \(version)"
     }
 }
 

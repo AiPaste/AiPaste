@@ -37,6 +37,8 @@ private final class CLIRunner {
 
             let command = try popArgument()
             switch command {
+            case "version":
+                printLine(AppVersion.displayString)
             case "panel":
                 try handlePanel()
             case "settings":
@@ -552,6 +554,7 @@ private final class CLIRunner {
     AiPaste CLI
 
     Usage:
+      aipaste version
       aipaste panel show|hide|toggle
       aipaste settings open
       aipaste capture
