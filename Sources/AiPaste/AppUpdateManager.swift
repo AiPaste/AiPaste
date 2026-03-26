@@ -1,225 +1,233 @@
 import AppKit
 import Foundation
+import Sparkle
+
+private enum SparkleKeys {
+    static let automaticChecks = "SUEnableAutomaticChecks"
+    static let feedURL = "SUFeedURL"
+    static let publicEDKey = "SUPublicEDKey"
+}
 
 @MainActor
-final class AppUpdateManager: ObservableObject {
+final class AppUpdateManager: NSObject, ObservableObject {
     static let shared = AppUpdateManager()
 
     @Published private(set) var automaticUpdatesEnabled: Bool
+    @Published private(set) var canCheckForUpdates = false
     @Published private(set) var isChecking = false
-    @Published private(set) var updateStatusMessage = "Not checked yet"
+    @Published private(set) var updateStatusMessage: String
     @Published private(set) var availableVersion: String?
     @Published private(set) var lastCheckedAt: Date?
 
     private let defaults = UserDefaults.standard
-    private let session: URLSession
-    private let releasesURL = URL(string: "https://api.github.com/repos/AiPaste/AiPaste/releases/latest")!
-    private let minimumCheckInterval: TimeInterval = 60 * 60 * 12
+    private var updaterController: SPUStandardUpdaterController?
+    private var hasAttemptedSetup = false
+    private var canCheckObservation: NSKeyValueObservation?
+    private var automaticChecksObservation: NSKeyValueObservation?
 
-    private init(session: URLSession = .shared) {
-        self.session = session
-        automaticUpdatesEnabled = true
+    private override init() {
+        let automaticChecks = UserDefaults.standard.object(forKey: SparkleKeys.automaticChecks) as? Bool ?? true
+        self.automaticUpdatesEnabled = automaticChecks
+        self.updateStatusMessage = Self.unconfiguredStatusMessage(for: Bundle.main)
+        super.init()
         reloadFromDefaults()
     }
 
     func configureOnLaunch() {
-        guard automaticUpdatesEnabled else { return }
-        guard shouldCheckAutomatically else { return }
-        Task {
-            await checkForUpdates(userInitiated: false)
-        }
-    }
-
-    func setAutomaticUpdates(_ enabled: Bool) {
-        automaticUpdatesEnabled = enabled
-        defaults.set(enabled, forKey: AppPreferences.automaticUpdates)
-        if enabled {
-            Task {
-                await checkForUpdates(userInitiated: false)
-            }
-        }
+        _ = ensureUpdaterIsReady()
     }
 
     func reloadFromDefaults() {
-        automaticUpdatesEnabled = defaults.object(forKey: AppPreferences.automaticUpdates) as? Bool ?? true
-        lastCheckedAt = defaults.object(forKey: AppPreferences.lastUpdateCheck) as? Date
-
-        if let availableVersion {
-            updateStatusMessage = "Version \(availableVersion) available"
-        } else if let lastCheckedAt {
-            let formatter = RelativeDateTimeFormatter()
-            formatter.unitsStyle = .short
-            updateStatusMessage = "Last checked \(formatter.localizedString(for: lastCheckedAt, relativeTo: .now))"
+        automaticUpdatesEnabled = defaults.object(forKey: SparkleKeys.automaticChecks) as? Bool ?? true
+        if let updater = updaterController?.updater {
+            automaticUpdatesEnabled = updater.automaticallyChecksForUpdates
+            canCheckForUpdates = updater.canCheckForUpdates
+            lastCheckedAt = updater.lastUpdateCheckDate
         } else {
-            updateStatusMessage = "Not checked yet"
+            canCheckForUpdates = false
+            lastCheckedAt = nil
         }
+        refreshStatusMessage()
     }
 
     func checkForUpdates(userInitiated: Bool) async {
-        guard !isChecking else { return }
-
-        isChecking = true
-        defer { isChecking = false }
-
-        if userInitiated {
-            updateStatusMessage = "Checking for updates…"
-        }
-
-        do {
-            var request = URLRequest(url: releasesURL)
-            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-            request.setValue("AiPaste", forHTTPHeaderField: "User-Agent")
-
-            let (data, response) = try await session.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
-                throw AppUpdateError.invalidResponse
-            }
-
-            let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
-            handleReleaseResponse(release, userInitiated: userInitiated)
-        } catch {
-            let message = "Update check failed"
-            updateStatusMessage = message
-            if userInitiated {
-                presentErrorAlert(message: message, error: error)
-            }
-        }
-    }
-
-    func openLatestReleaseDownload() {
-        guard let releaseURL = latestDownloadURL else { return }
-        NSWorkspace.shared.open(releaseURL)
-    }
-
-    func openReleasesPage() {
-        NSWorkspace.shared.open(URL(string: "https://github.com/AiPaste/AiPaste/releases")!)
-    }
-
-    private var shouldCheckAutomatically: Bool {
-        guard let lastCheckedAt else { return true }
-        return Date().timeIntervalSince(lastCheckedAt) >= minimumCheckInterval
-    }
-
-    private var latestDownloadURL: URL?
-
-    private func handleReleaseResponse(_ release: GitHubRelease, userInitiated: Bool) {
-        let latestVersion = normalizedVersion(from: release.tagName)
-        lastCheckedAt = Date()
-        defaults.set(lastCheckedAt, forKey: AppPreferences.lastUpdateCheck)
-
-        guard let currentVersion = currentVersionString else {
-            updateStatusMessage = "Update check available in packaged app builds"
-            availableVersion = latestVersion
+        guard userInitiated else {
             return
         }
 
-        if version(latestVersion, isNewerThan: currentVersion) {
-            availableVersion = latestVersion
-            latestDownloadURL = release.assets.first(where: { $0.name.hasSuffix("-macOS.zip") })?.browserDownloadURL ?? release.htmlURL
-            updateStatusMessage = "Version \(latestVersion) available"
-            presentUpdateAlert(version: latestVersion, release: release, userInitiated: userInitiated)
+        guard ensureUpdaterIsReady() else {
+            presentConfigurationAlert()
+            return
+        }
+
+        guard let updaterController else {
+            presentConfigurationAlert()
+            return
+        }
+
+        availableVersion = nil
+        isChecking = true
+        updateStatusMessage = "Checking for updates…"
+        updaterController.checkForUpdates(nil)
+    }
+
+    func setAutomaticUpdates(_ enabled: Bool) {
+        if ensureUpdaterIsReady(), let updater = updaterController?.updater {
+            updater.automaticallyChecksForUpdates = enabled
+            automaticUpdatesEnabled = updater.automaticallyChecksForUpdates
+            canCheckForUpdates = updater.canCheckForUpdates
         } else {
-            availableVersion = nil
-            latestDownloadURL = nil
-            updateStatusMessage = "Up to date"
-            if userInitiated {
-                presentUpToDateAlert(version: currentVersion)
+            automaticUpdatesEnabled = enabled
+            defaults.set(enabled, forKey: SparkleKeys.automaticChecks)
+        }
+
+        refreshStatusMessage()
+    }
+
+    private func ensureUpdaterIsReady() -> Bool {
+        if let updaterController {
+            automaticUpdatesEnabled = updaterController.updater.automaticallyChecksForUpdates
+            canCheckForUpdates = updaterController.updater.canCheckForUpdates
+            return true
+        }
+
+        guard !hasAttemptedSetup else {
+            return false
+        }
+
+        hasAttemptedSetup = true
+
+        guard Bundle.main.object(forInfoDictionaryKey: "CFBundlePackageType") as? String == "APPL",
+              Bundle.main.bundleURL.pathExtension == "app" else {
+            updateStatusMessage = Self.unconfiguredStatusMessage(for: Bundle.main)
+            return false
+        }
+
+        guard let feedURL = Bundle.main.object(forInfoDictionaryKey: SparkleKeys.feedURL) as? String,
+              !feedURL.isEmpty,
+              let publicKey = Bundle.main.object(forInfoDictionaryKey: SparkleKeys.publicEDKey) as? String,
+              !publicKey.isEmpty else {
+            updateStatusMessage = "Sparkle feed is not configured in this build"
+            return false
+        }
+
+        let controller = SPUStandardUpdaterController(
+            startingUpdater: false,
+            updaterDelegate: self,
+            userDriverDelegate: nil
+        )
+        updaterController = controller
+        installObservers(for: controller.updater)
+        controller.startUpdater()
+        automaticUpdatesEnabled = controller.updater.automaticallyChecksForUpdates
+        canCheckForUpdates = controller.updater.canCheckForUpdates
+        updateStatusMessage = "Automatic updates enabled"
+        return true
+    }
+
+    private func installObservers(for updater: SPUUpdater) {
+        canCheckObservation = updater.observe(\.canCheckForUpdates, options: [.initial, .new]) { [weak self] updater, _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.canCheckForUpdates = updater.canCheckForUpdates
+                self.refreshStatusMessage()
+            }
+        }
+
+        automaticChecksObservation = updater.observe(\.automaticallyChecksForUpdates, options: [.initial, .new]) { [weak self] updater, _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.automaticUpdatesEnabled = updater.automaticallyChecksForUpdates
+                self.refreshStatusMessage()
             }
         }
     }
 
-    private func presentUpdateAlert(version: String, release: GitHubRelease, userInitiated: Bool) {
-        let alert = NSAlert()
-        alert.messageText = "Update Available"
-        alert.informativeText = "AiPaste \(version) is available. You are currently using \(currentVersionString ?? "an older version")."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Download")
-        alert.addButton(withTitle: "Later")
-        if alert.runModal() == .alertFirstButtonReturn {
-            let targetURL = release.assets.first(where: { $0.name.hasSuffix("-macOS.zip") })?.browserDownloadURL ?? release.htmlURL
-            latestDownloadURL = targetURL
-            NSWorkspace.shared.open(targetURL)
-        } else if userInitiated {
+    private func refreshStatusMessage() {
+        if let version = availableVersion {
             updateStatusMessage = "Version \(version) available"
+            return
+        }
+
+        if isChecking {
+            updateStatusMessage = "Checking for updates…"
+            return
+        }
+
+        if updaterController == nil {
+            updateStatusMessage = Self.unconfiguredStatusMessage(for: Bundle.main)
+            return
+        }
+
+        if let lastCheckedAt {
+            let formatter = RelativeDateTimeFormatter()
+            formatter.unitsStyle = .short
+            updateStatusMessage = "Last checked \(formatter.localizedString(for: lastCheckedAt, relativeTo: .now))"
+        } else if automaticUpdatesEnabled {
+            updateStatusMessage = "Automatic updates enabled"
+        } else {
+            updateStatusMessage = "Automatic update checks are off"
         }
     }
 
-    private func presentUpToDateAlert(version: String) {
+    private func presentConfigurationAlert() {
         let alert = NSAlert()
-        alert.messageText = "You’re Up to Date"
-        alert.informativeText = "AiPaste \(version) is the latest available version."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
-    }
-
-    private func presentErrorAlert(message: String, error: Error) {
-        let alert = NSAlert()
-        alert.messageText = message
-        alert.informativeText = error.localizedDescription
+        alert.messageText = "Software Update Unavailable"
+        alert.informativeText = updateStatusMessage
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
         alert.runModal()
     }
 
-    private var currentVersionString: String? {
-        guard let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
-              !version.isEmpty else {
-            return nil
+    private static func unconfiguredStatusMessage(for bundle: Bundle) -> String {
+        guard bundle.object(forInfoDictionaryKey: "CFBundlePackageType") as? String == "APPL",
+              bundle.bundleURL.pathExtension == "app" else {
+            return "Software updates are available in packaged app builds"
         }
-        return normalizedVersion(from: version)
-    }
-
-    private func normalizedVersion(from rawValue: String) -> String {
-        rawValue.hasPrefix("v") ? String(rawValue.dropFirst()) : rawValue
-    }
-
-    private func version(_ lhs: String, isNewerThan rhs: String) -> Bool {
-        let lhsParts = lhs.split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
-        let rhsParts = rhs.split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
-        let count = max(lhsParts.count, rhsParts.count)
-
-        for index in 0..<count {
-            let left = index < lhsParts.count ? lhsParts[index] : 0
-            let right = index < rhsParts.count ? rhsParts[index] : 0
-            if left != right {
-                return left > right
-            }
-        }
-
-        return lhs != rhs && lhs.compare(rhs, options: .numeric) == .orderedDescending
+        return "Sparkle feed is not configured in this build"
     }
 }
 
-private enum AppUpdateError: LocalizedError {
-    case invalidResponse
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidResponse:
-            return "The update server returned an unexpected response."
-        }
+extension AppUpdateManager: SPUUpdaterDelegate {
+    func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+        availableVersion = normalizedVersion(item.displayVersionString)
+        isChecking = false
+        refreshStatusMessage()
     }
-}
 
-private struct GitHubRelease: Decodable {
-    let tagName: String
-    let htmlURL: URL
-    let assets: [GitHubReleaseAsset]
-
-    private enum CodingKeys: String, CodingKey {
-        case tagName = "tag_name"
-        case htmlURL = "html_url"
-        case assets
+    func updaterDidNotFindUpdate(_ updater: SPUUpdater, error: Error) {
+        availableVersion = nil
+        isChecking = false
+        lastCheckedAt = updater.lastUpdateCheckDate
+        updateStatusMessage = "Up to date"
     }
-}
 
-private struct GitHubReleaseAsset: Decodable {
-    let name: String
-    let browserDownloadURL: URL
+    func updater(_ updater: SPUUpdater, didDownloadUpdate item: SUAppcastItem) {
+        availableVersion = normalizedVersion(item.displayVersionString)
+        updateStatusMessage = "Version \(availableVersion ?? item.displayVersionString) ready to install"
+    }
 
-    private enum CodingKeys: String, CodingKey {
-        case name
-        case browserDownloadURL = "browser_download_url"
+    func updater(_ updater: SPUUpdater, willInstallUpdate item: SUAppcastItem) {
+        availableVersion = normalizedVersion(item.displayVersionString)
+        updateStatusMessage = "Installing version \(availableVersion ?? item.displayVersionString)…"
+    }
+
+    func updaterWillRelaunchApplication(_ updater: SPUUpdater) {
+        updateStatusMessage = "Restarting to finish update…"
+    }
+
+    func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
+        isChecking = false
+        availableVersion = nil
+        updateStatusMessage = "Update failed"
+    }
+
+    func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
+        isChecking = false
+        lastCheckedAt = updater.lastUpdateCheckDate
+    }
+
+    private func normalizedVersion(_ value: String) -> String {
+        value.hasPrefix("v") ? String(value.dropFirst()) : value
     }
 }

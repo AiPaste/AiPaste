@@ -82,7 +82,7 @@ To enable automatic paste-back into the previously active app, grant AiPaste Acc
 
 `Sound effects` now plays real system sounds for clipboard capture, successful paste-to-app actions, and permission or system-operation failures.
 
-`Automatic updates` checks the latest GitHub release for AiPaste in the background. When a newer version is available, the app shows a native prompt and can open the packaged release download directly.
+`Automatic updates` now uses the standard Sparkle in-app updater. Packaged builds check the Sparkle appcast in the background, download updates inside the app, and relaunch automatically after installation instead of sending users to the browser for a zip download.
 
 ## Build
 
@@ -118,12 +118,30 @@ Build a local `.app` bundle and release zip:
 ./scripts/build_release_app.sh 0.1.0
 ```
 
+To build a Sparkle-enabled bundle, provide the public EdDSA key and appcast URL:
+
+```bash
+SPARKLE_PUBLIC_ED_KEY="your-public-ed25519-key" \
+SPARKLE_APPCAST_URL="https://aipaste.github.io/AiPaste/appcast.xml" \
+./scripts/build_release_app.sh 0.1.0
+```
+
+Generate or refresh the appcast feed from packaged archives:
+
+```bash
+SPARKLE_PRIVATE_KEY="your-private-key-secret" \
+SPARKLE_DOWNLOAD_URL_PREFIX="https://github.com/AiPaste/AiPaste/releases/download/v0.1.0/" \
+SPARKLE_RELEASE_LINK="https://github.com/AiPaste/AiPaste/releases/tag/v0.1.0" \
+./scripts/generate_appcast.sh dist docs/appcast.xml
+```
+
 GitHub Actions workflow:
 
 - file: `.github/workflows/release-app.yml`
 - trigger: push a tag like `v0.1.0`
 - output: `dist/AiPaste.app` and `dist/AiPaste-<version>-macOS.zip`
-- release: automatically creates a GitHub Release on tag pushes and uploads the packaged zip
+- release: automatically creates a GitHub Release on tag pushes, generates `docs/appcast.xml`, and uploads the packaged zip
+- required secrets: `SPARKLE_PUBLIC_ED_KEY` and `SPARKLE_PRIVATE_KEY`
 
 Create an annotated release tag with both current and previous release change summaries:
 

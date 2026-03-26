@@ -45,12 +45,30 @@ jobs:
           echo "value=${VERSION}" >> "${GITHUB_OUTPUT}"
 
       - name: Make build script executable
-        run: chmod +x scripts/build_release_app.sh
+        run: |
+          chmod +x scripts/build_release_app.sh
+          chmod +x scripts/generate_appcast.sh
+
+      - name: Validate Sparkle configuration
+        env:
+          SPARKLE_PUBLIC_ED_KEY: ${{ secrets.SPARKLE_PUBLIC_ED_KEY }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          if [[ -z "${SPARKLE_PUBLIC_ED_KEY}" ]]; then
+            echo "Missing SPARKLE_PUBLIC_ED_KEY secret." >&2
+            exit 1
+          fi
+          if [[ -z "${SPARKLE_PRIVATE_KEY}" ]]; then
+            echo "Missing SPARKLE_PRIVATE_KEY secret." >&2
+            exit 1
+          fi
 
       - name: Build app bundle
         env:
           VERSION: ${{ steps.version.outputs.value }}
           BUILD_NUMBER: ${{ github.run_number }}
+          SPARKLE_PUBLIC_ED_KEY: ${{ secrets.SPARKLE_PUBLIC_ED_KEY }}
+          SPARKLE_APPCAST_URL: https://aipaste.github.io/AiPaste/appcast.xml
         run: ./scripts/build_release_app.sh "${VERSION}"
 
       - name: Compute release archive checksum
@@ -80,6 +98,32 @@ jobs:
             "dist/AiPaste-${VERSION}-macOS.zip" \
             --title "AiPaste v${VERSION}" \
             --generate-notes
+
+      - name: Generate Sparkle appcast
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          SPARKLE_DOWNLOAD_URL_PREFIX: https://github.com/AiPaste/AiPaste/releases/download/v${{ steps.version.outputs.value }}/
+          SPARKLE_RELEASE_LINK: https://github.com/AiPaste/AiPaste/releases/tag/v${{ steps.version.outputs.value }}
+        run: ./scripts/generate_appcast.sh "dist" "dist/appcast.xml"
+
+      - name: Publish Sparkle appcast to GitHub Pages docs
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          git fetch origin main
+          git switch --create main-release-update --track origin/main
+          cp "dist/appcast.xml" "docs/appcast.xml"
+          if [[ -z "$(git status --porcelain -- docs/appcast.xml)" ]]; then
+            echo "Appcast already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/appcast.xml
+          git commit -m "Update Sparkle appcast to v${VERSION}"
+          git push origin HEAD:main
 
       - name: Update Homebrew cask
         if: startsWith(github.ref, 'refs/tags/')

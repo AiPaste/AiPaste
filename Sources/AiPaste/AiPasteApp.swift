@@ -24,6 +24,7 @@ struct AiPasteApp: App {
                     await appState.updateManager.checkForUpdates(userInitiated: true)
                 }
             }
+            .disabled(appState.updateManager.isChecking)
 
             Divider()
 

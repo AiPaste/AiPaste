@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>AiPaste Updates</title>
+    <link>https://github.com/AiPaste/AiPaste/releases</link>
+    <description>AiPaste Sparkle appcast</description>
+    <language>en</language>
+  </channel>
+</rss>
