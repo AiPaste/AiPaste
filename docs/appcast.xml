@@ -3,14 +3,14 @@
     <channel>
         <title>AiPaste</title>
         <item>
-            <title>0.1.9</title>
-            <pubDate>Thu, 26 Mar 2026 14:08:37 +0000</pubDate>
-            <link>https://github.com/AiPaste/AiPaste/releases/tag/v0.1.9</link>
-            <sparkle:version>10</sparkle:version>
-            <sparkle:shortVersionString>0.1.9</sparkle:shortVersionString>
+            <title>0.2.0</title>
+            <pubDate>Thu, 26 Mar 2026 14:12:52 +0000</pubDate>
+            <link>https://github.com/AiPaste/AiPaste/releases/tag/v0.2.0</link>
+            <sparkle:version>11</sparkle:version>
+            <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/AiPaste/AiPaste/releases/download/v0.1.9/AiPaste-0.1.9-macOS.zip" length="2624319" type="application/octet-stream" sparkle:edSignature="LBO/u0bPuQOqb6ELVohzW+J6yunM+3Vpmx7lpI0w6vlUuuZwicCSdWJRZmGMFiKpd5U5RjgBZgY++ynH3yomDA=="/>
+            <enclosure url="https://github.com/AiPaste/AiPaste/releases/download/v0.2.0/AiPaste-0.2.0-macOS.zip" length="2645034" type="application/octet-stream" sparkle:edSignature="7HXdd+0z542XG4eF3bngrUun9OdBaMbihzinm8DkeDR9VY3HRB02FaLvT5B/uo/XEWgjEGDrtpIFza7z5iF+Dw=="/>
         </item>
     </channel>
 </rss>
