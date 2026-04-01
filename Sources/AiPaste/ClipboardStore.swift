@@ -111,7 +111,7 @@ final class ClipboardStore: ObservableObject {
     private var pendingChangeCount: Int?
     private var pendingCaptureAttempts = 0
     private var pendingRetryWorkItem: DispatchWorkItem?
-    private let maxItems = 80
+    private let maxItems = 60
     private let maxPendingCaptureAttempts = 6
     private let pendingRetryDelay: TimeInterval = 0.12
     private let persistenceURL: URL
@@ -138,8 +138,11 @@ final class ClipboardStore: ObservableObject {
         persistenceURL = directory.appendingPathComponent("clipboard-history.json")
 
         load()
-        applyRetentionPolicy()
+        let didPruneLoadedItems = applyRetentionPolicy()
         configureCloudSync()
+        if didPruneLoadedItems {
+            persist()
+        }
         if monitoringEnabled {
             startMonitoring()
         }
@@ -323,7 +326,10 @@ final class ClipboardStore: ObservableObject {
         items = []
         groups = []
         load()
-        applyRetentionPolicy()
+        let didPruneLoadedItems = applyRetentionPolicy()
+        if didPruneLoadedItems {
+            persist()
+        }
     }
 
     private func promote(_ item: ClipboardItem) {
@@ -1149,10 +1155,17 @@ final class ClipboardStore: ObservableObject {
             }
     }
 
-    private func applyRetentionPolicy() {
-        guard let maxAge = currentHistoryRetention.maxAge else { return }
-        let cutoff = Date().addingTimeInterval(-maxAge)
-        items.removeAll { !$0.isPinned && $0.capturedAt < cutoff }
+    @discardableResult
+    private func applyRetentionPolicy() -> Bool {
+        let originalCount = items.count
+
+        if let maxAge = currentHistoryRetention.maxAge {
+            let cutoff = Date().addingTimeInterval(-maxAge)
+            items.removeAll { !$0.isPinned && $0.capturedAt < cutoff }
+        }
+
+        trimIfNeeded()
+        return items.count != originalCount
     }
 
     private var currentHistoryRetention: HistoryRetention {
